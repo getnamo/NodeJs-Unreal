@@ -1,0 +1,23 @@
+{
+	"FileVersion": 3,
+	"Version": 1,
+	"VersionName": "1.0",
+	"FriendlyName": "NodeJs",
+	"Description": "Embed node.js as an unreal plugin.",
+	"Category": "Other",
+	"CreatedBy": "getnamo",
+	"CreatedByURL": "",
+	"DocsURL": "",
+	"MarketplaceURL": "",
+	"SupportURL": "",
+	"CanContainContent": true,
+	"IsBetaVersion": false,
+	"Installed": false,
+	"Modules": [
+		{
+			"Name": "NodeJs",
+			"Type": "Runtime",
+			"LoadingPhase": "Default"
+		}
+	]
+}
