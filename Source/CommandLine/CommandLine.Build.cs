@@ -2,9 +2,9 @@
 
 using UnrealBuildTool;
 
-public class NodeJs : ModuleRules
+public class CommandLine : ModuleRules
 {
-	public NodeJs(ReadOnlyTargetRules Target) : base(Target)
+	public CommandLine(ReadOnlyTargetRules Target) : base(Target)
 	{
 		PCHUsage = ModuleRules.PCHUsageMode.UseExplicitOrSharedPCHs;
 		
@@ -26,8 +26,7 @@ public class NodeJs : ModuleRules
 			new string[]
 			{
 				"Core",
-				"Projects",
-				"CommandLine",
+				"Projects"
 				// ... add other public dependencies that you statically link with here ...
 			}
 			);
