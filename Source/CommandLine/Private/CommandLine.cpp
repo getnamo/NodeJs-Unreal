@@ -14,8 +14,9 @@ void FCommandLineModule::StartupModule()
 	FNodeCmd Cmd;
 	FString Path = TEXT("N/A");
 	FString Args = TEXT("");
+	UE_LOG(LogTemp, Log, TEXT("ScriptStart"));
 	Cmd.RunScript(Path, Args);
-	UE_LOG(LogTemp, Log, TEXT("Ran script!"));
+	UE_LOG(LogTemp, Log, TEXT("ScriptEnd"));
 }
 
 void FCommandLineModule::ShutdownModule()
