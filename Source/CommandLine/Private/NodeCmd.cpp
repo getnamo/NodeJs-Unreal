@@ -14,6 +14,7 @@ FNodeCmd::FNodeCmd()
 	g_hChildStd_ERR_Rd = NULL;
 	g_hChildStd_ERR_Wr = NULL;
 	ProcessDirectory = FPaths::ConvertRelativePathToFull(FPaths::ProjectDir() + "Plugins/nodejs-ue4/Source/ThirdParty/node");
+	Socket = MakeShareable(new FSocketIONative);
 }
 
 FNodeCmd::~FNodeCmd()
@@ -32,22 +33,21 @@ void FNodeCmd::RunScript(const FString& ScriptRelativePath)
 	FString NodeExe = TEXT("node.exe");
 
 	UE_LOG(LogTemp, Log, TEXT("RunScriptStart"));
-	Socket.OnConnectedCallback = [&](const FString& InSessionId)
+	Socket->OnConnectedCallback = [&](const FString& InSessionId)
 	{
 		UE_LOG(LogTemp, Log, TEXT("Connected!"));
 	};
-	Socket.OnEvent(TEXT("stdout"), [&](const FString& Event, const TSharedPtr<FJsonValue>& Message)
+	Socket->OnEvent(TEXT("stdout"), [&](const FString& Event, const TSharedPtr<FJsonValue>& Message)
 	{
 		UE_LOG(LogTemp, Log, TEXT("%s"), *USIOJConvert::ToJsonString(Message));
 	});
-	Socket.OnEvent(TEXT("done"), [&](const FString& Event, const TSharedPtr<FJsonValue>& Message)
+	Socket->OnEvent(TEXT("done"), [&](const FString& Event, const TSharedPtr<FJsonValue>& Message)
 	{
 		UE_LOG(LogTemp, Log, TEXT("%s"), *USIOJConvert::ToJsonString(Message));
 
-		Socket.MaxReconnectionAttempts = 1;
-		Socket.Disconnect();
+		Socket->Disconnect();
 	});
-	Socket.Connect(TEXT("http://localhost:3000"));
+	Socket->Connect(TEXT("http://localhost:3000"));
 
 
 	TFunction<void()> Task = [&]
@@ -81,10 +81,16 @@ void FNodeCmd::RunScript(const FString& ScriptRelativePath)
 
 		PROCESS_INFORMATION piProcInfo = CreateChildProcess(NodeExe, ScriptRelativePath);
 
+		Emit(TEXT("Got some data!"));
+
 		//ReadFromPipe();
 		while (bShouldRun)
 		{
 			FPlatformProcess::Sleep(0.1f);
+		}
+		if (Socket->bIsConnected) 
+		{
+
 		}
 
 		TerminateProcess(piProcInfo.hProcess, 1);
@@ -95,7 +101,10 @@ void FNodeCmd::RunScript(const FString& ScriptRelativePath)
 	UE_LOG(LogTemp, Log, TEXT("RunScriptEnd"));
 }
 
-
+void FNodeCmd::Emit(const FString& Data)
+{
+	Socket->Emit(TEXT("stdin"), Data);
+}
 
 PROCESS_INFORMATION FNodeCmd::CreateChildProcess(const FString& Process, const FString& Commands) {
 	PROCESS_INFORMATION piProcInfo;

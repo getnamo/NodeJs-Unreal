@@ -35,6 +35,7 @@ public:
 	void RunScript(const FString& ScriptRelativePath);
 
 	//Todo: add std-emit and on event binds for this pipe
+	void Emit(const FString& Data);
 
 private:
 	HANDLE g_hChildStd_OUT_Rd;
@@ -47,7 +48,7 @@ private:
 	void ReadFromPipe();
 	void WriteToPipe(FString Data);
 
-	FSocketIONative Socket;
+	TSharedPtr<FSocketIONative> Socket;
 	FString ProcessDirectory;
 
 	FThreadSafeBool bShouldRun;
