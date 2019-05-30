@@ -24,7 +24,6 @@
 #include "SocketIONative.h"
 #include "Runtime/Core/Public/HAL/ThreadSafeBool.h"
 
-//todo: rehide implementation
 
 class COMMANDLINE_API FNodeCmd
 {
@@ -32,8 +31,10 @@ public:
 	FNodeCmd();
 	~FNodeCmd();
 	
-
+	//Start a node.js script
 	void RunScript(const FString& ScriptRelativePath);
+
+	//Todo: add std-emit and on event binds for this pipe
 
 private:
 	HANDLE g_hChildStd_OUT_Rd;
