@@ -30,7 +30,8 @@ class COMMANDLINE_API FNodeCmd
 {
 public:
 	FNodeCmd();
-	FThreadSafeBool bShouldRun;
+	~FNodeCmd();
+	
 
 	void RunScript(const FString& ScriptRelativePath);
 
@@ -47,4 +48,7 @@ private:
 
 	FSocketIONative Socket;
 	FString ProcessDirectory;
+
+	FThreadSafeBool bShouldRun;
+	FThreadSafeBool bIsRunning;
 };

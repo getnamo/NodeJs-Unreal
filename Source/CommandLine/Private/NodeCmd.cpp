@@ -6,6 +6,97 @@
 
 //largely from https://stackoverflow.com/questions/14147138/capture-output-of-spawned-process-to-string
 
+FNodeCmd::FNodeCmd()
+{
+	bShouldRun = false;
+	g_hChildStd_OUT_Rd = NULL;
+	g_hChildStd_OUT_Wr = NULL;
+	g_hChildStd_ERR_Rd = NULL;
+	g_hChildStd_ERR_Wr = NULL;
+	ProcessDirectory = FPaths::ConvertRelativePathToFull(FPaths::ProjectDir() + "Plugins/nodejs-ue4/Source/ThirdParty/node");
+}
+
+FNodeCmd::~FNodeCmd()
+{
+	bShouldRun = false;
+
+	//block until the other thread quits
+	while (bIsRunning)
+	{
+
+	}
+}
+
+void FNodeCmd::RunScript(const FString& ScriptRelativePath)
+{
+	FString NodeExe = TEXT("node.exe");
+
+	UE_LOG(LogTemp, Log, TEXT("RunScriptStart"));
+	Socket.OnConnectedCallback = [&](const FString& InSessionId)
+	{
+		UE_LOG(LogTemp, Log, TEXT("Connected!"));
+	};
+	Socket.OnEvent(TEXT("stdout"), [&](const FString& Event, const TSharedPtr<FJsonValue>& Message)
+	{
+		UE_LOG(LogTemp, Log, TEXT("%s"), *USIOJConvert::ToJsonString(Message));
+	});
+	Socket.OnEvent(TEXT("done"), [&](const FString& Event, const TSharedPtr<FJsonValue>& Message)
+	{
+		UE_LOG(LogTemp, Log, TEXT("%s"), *USIOJConvert::ToJsonString(Message));
+
+		Socket.MaxReconnectionAttempts = 1;
+		Socket.Disconnect();
+	});
+	Socket.Connect(TEXT("http://localhost:3000"));
+
+
+	TFunction<void()> Task = [&]
+	{
+		UE_LOG(LogTemp, Log, TEXT("node thread start"));
+		bIsRunning = true;
+
+		SECURITY_ATTRIBUTES sa;
+		// Set the bInheritHandle flag so pipe handles are inherited. 
+		sa.nLength = sizeof(SECURITY_ATTRIBUTES);
+		sa.bInheritHandle = 1;
+		sa.lpSecurityDescriptor = NULL;
+		// Create a pipe for the child process's STDERR. 
+		if (!CreatePipe(&g_hChildStd_ERR_Rd, &g_hChildStd_ERR_Wr, &sa, 0)) {
+			return;
+		}
+		// Ensure the read handle to the pipe for STDERR is not inherited.
+		if (!SetHandleInformation(g_hChildStd_ERR_Rd, HANDLE_FLAG_INHERIT, 0)) {
+			return;
+		}
+		// Create a pipe for the child process's STDOUT. 
+		if (!CreatePipe(&g_hChildStd_OUT_Rd, &g_hChildStd_OUT_Wr, &sa, 0)) {
+			return;
+		}
+		// Ensure the read handle to the pipe for STDOUT is not inherited
+		if (!SetHandleInformation(g_hChildStd_OUT_Rd, HANDLE_FLAG_INHERIT, 0)) {
+			return;
+		}
+
+		bShouldRun = true;
+
+		PROCESS_INFORMATION piProcInfo = CreateChildProcess(NodeExe, ScriptRelativePath);
+
+		//ReadFromPipe();
+		while (bShouldRun)
+		{
+			FPlatformProcess::Sleep(0.1f);
+		}
+
+		TerminateProcess(piProcInfo.hProcess, 1);
+		bIsRunning = false;
+	};
+
+	Async(EAsyncExecution::Thread, Task);
+	UE_LOG(LogTemp, Log, TEXT("RunScriptEnd"));
+}
+
+
+
 PROCESS_INFORMATION FNodeCmd::CreateChildProcess(const FString& Process, const FString& Commands) {
 	PROCESS_INFORMATION piProcInfo;
 	STARTUPINFO siStartInfo;
@@ -97,81 +188,5 @@ void FNodeCmd::WriteToPipe(FString Data)
 }
 
 
-FNodeCmd::FNodeCmd()
-{
-	bShouldRun = false;
-	g_hChildStd_OUT_Rd = NULL;
-	g_hChildStd_OUT_Wr = NULL;
-	g_hChildStd_ERR_Rd = NULL;
-	g_hChildStd_ERR_Wr = NULL;
-	ProcessDirectory = FPaths::ConvertRelativePathToFull(FPaths::ProjectDir() + "Plugins/nodejs-ue4/Source/ThirdParty/node");
-}
 
-void FNodeCmd::RunScript(const FString& ScriptRelativePath)
-{
-	FString NodeExe = TEXT("node.exe");
-
-	UE_LOG(LogTemp, Log, TEXT("RunScriptStart"));
-	Socket.OnConnectedCallback = [&](const FString& InSessionId)
-	{
-		UE_LOG(LogTemp, Log, TEXT("Connected!"));
-	};
-	Socket.OnEvent(TEXT("stdout"), [&](const FString& Event, const TSharedPtr<FJsonValue>& Message)
-	{
-		UE_LOG(LogTemp, Log, TEXT("%s"), *USIOJConvert::ToJsonString(Message));
-	});
-	Socket.OnEvent(TEXT("done"), [&](const FString& Event, const TSharedPtr<FJsonValue>& Message)
-	{
-		UE_LOG(LogTemp, Log, TEXT("%s"), *USIOJConvert::ToJsonString(Message));
-
-		Socket.MaxReconnectionAttempts = 1;
-		Socket.Disconnect();
-	});
-	Socket.Connect(TEXT("http://localhost:3000"));
-
-
-	TFunction<void()> Task = [&]
-	{
-		UE_LOG(LogTemp, Log, TEXT("TestPipe Start"));
-		UE_LOG(LogTemp, Log, TEXT("Waiting..."));
-		//FPlatformProcess::Sleep(4.0);
-		UE_LOG(LogTemp, Log, TEXT("Waited, connecting."));
-
-		SECURITY_ATTRIBUTES sa;
-		// Set the bInheritHandle flag so pipe handles are inherited. 
-		sa.nLength = sizeof(SECURITY_ATTRIBUTES);
-		sa.bInheritHandle = 1;
-		sa.lpSecurityDescriptor = NULL;
-		// Create a pipe for the child process's STDERR. 
-		if (!CreatePipe(&g_hChildStd_ERR_Rd, &g_hChildStd_ERR_Wr, &sa, 0)) {
-			return;
-		}
-		// Ensure the read handle to the pipe for STDERR is not inherited.
-		if (!SetHandleInformation(g_hChildStd_ERR_Rd, HANDLE_FLAG_INHERIT, 0)) {
-			return;
-		}
-		// Create a pipe for the child process's STDOUT. 
-		if (!CreatePipe(&g_hChildStd_OUT_Rd, &g_hChildStd_OUT_Wr, &sa, 0)) {
-			return;
-		}
-		// Ensure the read handle to the pipe for STDOUT is not inherited
-		if (!SetHandleInformation(g_hChildStd_OUT_Rd, HANDLE_FLAG_INHERIT, 0)) {
-			return;
-		}
-
-		bShouldRun = true;
-
-		PROCESS_INFORMATION piProcInfo = CreateChildProcess(NodeExe, ScriptRelativePath);
-
-		//ReadFromPipe();
-		/*while (bShouldRun)
-		{
-			FPlatformProcess::Sleep(0.1f);
-			ReadFromPipe();
-		}*/
-	};
-
-	Async(EAsyncExecution::Thread, Task);
-	UE_LOG(LogTemp, Log, TEXT("RunScriptEnd"));
-}
 
