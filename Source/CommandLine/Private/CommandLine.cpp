@@ -5,17 +5,17 @@
 #include "Modules/ModuleManager.h"
 #include "Interfaces/IPluginManager.h"
 
-#include "NodeCmd.h"
+//#include "NodeCmd.h"
 
 #define LOCTEXT_NAMESPACE "FCommandLine"
 
 void FCommandLineModule::StartupModule()
 {
-	FNodeCmd Cmd;
+	Cmd = MakeShareable(new FNodeCmd());
 	FString Path = TEXT("N/A");
 	FString Args = TEXT("");
 	UE_LOG(LogTemp, Log, TEXT("ScriptStart"));
-	Cmd.RunScript(Path, Args);
+	Cmd->RunScript(Path, Args);
 	UE_LOG(LogTemp, Log, TEXT("ScriptEnd"));
 }
 

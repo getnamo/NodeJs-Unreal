@@ -24,5 +24,11 @@
 			"Type": "Runtime",
 			"LoadingPhase": "Default"
 		}
+	],
+	"Plugins": [
+		{
+			"Name": "SocketIOClient",
+			"Enabled": true
+		}
 	]
 }

@@ -26,7 +26,11 @@ public class CommandLine : ModuleRules
 			new string[]
 			{
 				"Core",
-				"Projects"
+				"Projects",
+				"SocketIOClient",
+				"SocketIOLib",
+				"Json",
+				"SIOJson"
 				// ... add other public dependencies that you statically link with here ...
 			}
 			);

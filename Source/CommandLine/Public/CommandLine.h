@@ -3,6 +3,8 @@
 #pragma once
 
 #include "Modules/ModuleManager.h"
+#include "NodeCmd.h"
+
 
 class FCommandLineModule : public IModuleInterface
 {
@@ -13,4 +15,5 @@ public:
 	virtual void ShutdownModule() override;
 
 private:
+	TSharedPtr<FNodeCmd> Cmd;
 };
