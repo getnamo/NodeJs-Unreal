@@ -32,9 +32,7 @@ public:
 	FNodeCmd();
 	FThreadSafeBool bShouldRun;
 
-	void RunScript(const FString& ScriptPath, const FString& Args = TEXT(""));
-
-	int TestPipe();
+	void RunScript(const FString& ScriptRelativePath);
 
 private:
 	HANDLE g_hChildStd_OUT_Rd;
@@ -43,9 +41,10 @@ private:
 	HANDLE g_hChildStd_ERR_Wr;
 	HANDLE g_hChildStd_IN_Rd;
 
-	PROCESS_INFORMATION CreateChildProcess();
+	PROCESS_INFORMATION CreateChildProcess(const FString& Process, const FString& Commands);
 	void ReadFromPipe();
 	void WriteToPipe(FString Data);
 
 	FSocketIONative Socket;
+	FString ProcessDirectory;
 };

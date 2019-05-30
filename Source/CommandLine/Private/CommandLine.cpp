@@ -12,10 +12,9 @@
 void FCommandLineModule::StartupModule()
 {
 	Cmd = MakeShareable(new FNodeCmd());
-	FString Path = TEXT("N/A");
-	FString Args = TEXT("");
+	FString Script = TEXT("hello.js");
 	UE_LOG(LogTemp, Log, TEXT("ScriptStart"));
-	Cmd->RunScript(Path, Args);
+	Cmd->RunScript(Script);
 	UE_LOG(LogTemp, Log, TEXT("ScriptEnd"));
 }
 
