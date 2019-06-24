@@ -28,6 +28,9 @@ public class NodeJs : ModuleRules
 				"Core",
 				"Projects",
 				"CommandLine",
+				"SocketIOClient",
+				"SIOJson",
+				"Json"
 				// ... add other public dependencies that you statically link with here ...
 			}
 			);
@@ -36,6 +39,8 @@ public class NodeJs : ModuleRules
 		PrivateDependencyModuleNames.AddRange(
 			new string[]
 			{
+				"CoreUObject",
+				"Engine",
 				// ... add private dependencies that you statically link with here ...	
 			}
 			);

@@ -26,9 +26,11 @@ FNodeCmd::~FNodeCmd()
 	{
 
 	}
+
+	Socket->Disconnect();
 }
 
-void FNodeCmd::RunScript(const FString& ScriptRelativePath)
+void FNodeCmd::RunScript(const FString& ScriptRelativePath, int32 Port)
 {
 	FString NodeExe = TEXT("node.exe");
 
@@ -47,7 +49,7 @@ void FNodeCmd::RunScript(const FString& ScriptRelativePath)
 
 		Socket->Disconnect();
 	});
-	Socket->Connect(TEXT("http://localhost:3000"));
+	Socket->Connect(FString::Printf(TEXT("http://localhost:%d"), Port));
 
 
 	TFunction<void()> Task = [&]
@@ -95,15 +97,28 @@ void FNodeCmd::RunScript(const FString& ScriptRelativePath)
 
 		TerminateProcess(piProcInfo.hProcess, 1);
 		bIsRunning = false;
+
+		UE_LOG(LogTemp, Log, TEXT("RunScriptTerminated"));
 	};
 
 	Async(EAsyncExecution::Thread, Task);
-	UE_LOG(LogTemp, Log, TEXT("RunScriptEnd"));
 }
 
 void FNodeCmd::Emit(const FString& Data)
 {
 	Socket->Emit(TEXT("stdin"), Data);
+}
+
+void FNodeCmd::StopScript()
+{
+	Socket->Emit(TEXT("quit"), TEXT("ForceStop"));
+	Socket->Disconnect();
+	bShouldRun = false;
+}
+
+bool FNodeCmd::IsScriptRunning()
+{
+	return bIsRunning;
 }
 
 PROCESS_INFORMATION FNodeCmd::CreateChildProcess(const FString& Process, const FString& Commands) {

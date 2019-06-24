@@ -32,10 +32,17 @@ public:
 	~FNodeCmd();
 	
 	//Start a node.js script
-	void RunScript(const FString& ScriptRelativePath);
+	void RunScript(const FString& ScriptRelativePath, int32 Port = 3000);
 
 	//Todo: add std-emit and on event binds for this pipe
 	void Emit(const FString& Data);
+
+	//Forcefully stop the script
+	void StopScript();
+
+	bool IsScriptRunning();
+
+	TSharedPtr<FSocketIONative> Socket;
 
 private:
 	HANDLE g_hChildStd_OUT_Rd;
@@ -48,7 +55,7 @@ private:
 	void ReadFromPipe();
 	void WriteToPipe(FString Data);
 
-	TSharedPtr<FSocketIONative> Socket;
+
 	FString ProcessDirectory;
 
 	FThreadSafeBool bShouldRun;
