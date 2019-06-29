@@ -15,6 +15,7 @@ FNodeCmd::FNodeCmd()
 	g_hChildStd_ERR_Wr = NULL;
 	ProcessDirectory = FPaths::ConvertRelativePathToFull(FPaths::ProjectDir() + "Plugins/nodejs-ue4/Source/ThirdParty/node");
 	Socket = MakeShareable(new FSocketIONative);
+	OnScriptFinished = nullptr;
 }
 
 FNodeCmd::~FNodeCmd()
@@ -99,6 +100,15 @@ void FNodeCmd::RunScript(const FString& ScriptRelativePath, int32 Port)
 		bIsRunning = false;
 
 		UE_LOG(LogTemp, Log, TEXT("RunScriptTerminated"));
+
+		TFunction<void()> GTCallback = [this, ScriptRelativePath]
+		{
+			if (OnScriptFinished)
+			{
+				OnScriptFinished(ScriptRelativePath);
+			}
+		};
+		Async(EAsyncExecution::TaskGraph, GTCallback);
 	};
 
 	Async(EAsyncExecution::Thread, Task);

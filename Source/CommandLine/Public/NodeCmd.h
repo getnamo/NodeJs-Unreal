@@ -42,6 +42,8 @@ public:
 
 	bool IsScriptRunning();
 
+	TFunction<void(const FString& ScriptRelativePath)> OnScriptFinished;
+
 	TSharedPtr<FSocketIONative> Socket;
 
 private:
