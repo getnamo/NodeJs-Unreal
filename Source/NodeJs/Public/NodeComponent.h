@@ -43,6 +43,22 @@ public:
 	void Emit(const FString& EventName, USIOJsonValue* Message = nullptr, const FString& Namespace = FString(TEXT("/")));
 
 	/**
+	* Emit an event with a JsonValue message with a callback function defined by CallBackFunctionName
+	*
+	* @param Name					Event name
+	* @param Message				SIOJsonValue
+	* @param CallbackFunctionName	Name of the optional callback function with signature (String, SIOJsonValue)
+	* @param Target					CallbackFunction target object, typically self where this is called.
+	* @param Namespace				Namespace within socket.io
+	*/
+	UFUNCTION(BlueprintCallable, Category = "SocketIO Functions")
+	void EmitWithCallBack(const FString& EventName,
+			USIOJsonValue* Message = nullptr,
+			const FString& CallbackFunctionName = FString(""),
+			UObject* Target = nullptr,
+			const FString& Namespace = FString(TEXT("/")));
+
+	/**
 	* Bind an event, then respond to it with 'On' multi-cast delegate
 	*
 	* @param EventName	Event name
@@ -58,6 +74,8 @@ protected:
 	virtual void BeginPlay() override;
 
 	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
+
+	bool CallBPFunctionWithResponse(UObject* Target, const FString& FunctionName, TArray<TSharedPtr<FJsonValue>> Response);
 
 private:
 	TSharedPtr<FNodeCmd> Cmd;
