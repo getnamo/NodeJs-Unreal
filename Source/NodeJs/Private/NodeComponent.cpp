@@ -4,6 +4,10 @@
 
 void UNodeComponent::RunScript(const FString& ScriptRelativePath)
 {
+	Cmd->OnScriptFinished = [this](const FString& ScriptEndedPath)
+	{
+		OnScriptEnd.Broadcast(ScriptEndedPath);
+	};
 	//for now hardwire port
 	Cmd->RunScript(ScriptRelativePath, 3000);
 }

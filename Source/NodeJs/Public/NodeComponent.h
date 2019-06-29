@@ -8,6 +8,7 @@
 #include "NodeCmd.h"
 #include "NodeComponent.generated.h"
 
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FNodeScriptEndSignature, FString, FinishedScriptRelativePath);
 
 UCLASS( ClassGroup=(Custom), meta=(BlueprintSpawnableComponent) )
 class NODEJS_API UNodeComponent : public UActorComponent
@@ -18,6 +19,9 @@ public:
 
 	UPROPERTY(BlueprintAssignable, Category = "NodeJs Events")
 	FSIOCEventJsonSignature OnEvent;
+
+	UPROPERTY(BlueprintAssignable, Category = "NodeJs Events")
+	FNodeScriptEndSignature OnScriptEnd;
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = NodeJsProperties)
 	bool bRunDefaultScriptOnBeginPlay;
