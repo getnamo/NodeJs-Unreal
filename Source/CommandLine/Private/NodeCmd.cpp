@@ -14,8 +14,8 @@ FNodeCmd::FNodeCmd()
 	g_hChildStd_ERR_Rd = NULL;
 	g_hChildStd_ERR_Wr = NULL;
 	ProcessDirectory = FPaths::ConvertRelativePathToFull(FPaths::ProjectDir() + "Plugins/nodejs-ue4/Source/ThirdParty/node");
-	Socket = MakeShareable(new FSocketIONative);
 	OnScriptFinished = nullptr;
+	Socket = MakeShareable(new FSocketIONative);
 }
 
 FNodeCmd::~FNodeCmd()
@@ -31,9 +31,19 @@ FNodeCmd::~FNodeCmd()
 	Socket->Disconnect();
 }
 
-void FNodeCmd::RunScript(const FString& ScriptRelativePath, int32 Port)
+bool FNodeCmd::RunScript(const FString& ScriptRelativePath, int32 Port)
 {
+	//Script already running? return false
+	if (bIsRunning) 
+	{
+		return false;
+	}
+
 	FString NodeExe = TEXT("node.exe");
+	if (Socket->bIsConnected) 
+	{
+		Socket->SyncDisconnect();	//this will block for ~1 sec
+	}
 
 	UE_LOG(LogTemp, Log, TEXT("RunScriptStart"));
 	Socket->OnConnectedCallback = [&](const FString& InSessionId)
@@ -44,16 +54,18 @@ void FNodeCmd::RunScript(const FString& ScriptRelativePath, int32 Port)
 	{
 		UE_LOG(LogTemp, Log, TEXT("%s"), *USIOJConvert::ToJsonString(Message));
 	});
-	Socket->OnEvent(TEXT("done"), [&](const FString& Event, const TSharedPtr<FJsonValue>& Message)
+	Socket->OnEvent(TEXT("scriptDone"), [&](const FString& Event, const TSharedPtr<FJsonValue>& Message)
 	{
 		UE_LOG(LogTemp, Log, TEXT("%s"), *USIOJConvert::ToJsonString(Message));
-
 		Socket->Disconnect();
+		bShouldRun = false;
 	});
+
+	//NB: a new script run means events would need to be rebound... todo: keep a list of events bound and auto-rebind
 	Socket->Connect(FString::Printf(TEXT("http://localhost:%d"), Port));
 
 
-	TFunction<void()> Task = [&]
+	TFunction<void()> Task = [&, ScriptRelativePath]
 	{
 		UE_LOG(LogTemp, Log, TEXT("node thread start"));
 		bIsRunning = true;
@@ -97,21 +109,24 @@ void FNodeCmd::RunScript(const FString& ScriptRelativePath, int32 Port)
 		}
 
 		TerminateProcess(piProcInfo.hProcess, 1);
-		bIsRunning = false;
 
 		UE_LOG(LogTemp, Log, TEXT("RunScriptTerminated"));
+		const FString FinishPath = ScriptRelativePath;
 
-		TFunction<void()> GTCallback = [this, ScriptRelativePath]
+		TFunction<void()> GTCallback = [this, FinishPath]
 		{
+			bIsRunning = false;
 			if (OnScriptFinished)
 			{
-				OnScriptFinished(ScriptRelativePath);
+				OnScriptFinished(FinishPath);
 			}
 		};
 		Async(EAsyncExecution::TaskGraph, GTCallback);
 	};
 
 	Async(EAsyncExecution::Thread, Task);
+
+	return true;
 }
 
 void FNodeCmd::Emit(const FString& Data)

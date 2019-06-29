@@ -2,6 +2,9 @@
 #include "NodeComponent.h"
 #include "SIOMessageConvert.h"
 
+//todo: rotate ports if running more than one script in total, that needs to be passed down to script master
+int32 StaticAvailablePort = 4269;
+
 void UNodeComponent::RunScript(const FString& ScriptRelativePath)
 {
 	Cmd->OnScriptFinished = [this](const FString& ScriptEndedPath)
@@ -9,7 +12,7 @@ void UNodeComponent::RunScript(const FString& ScriptRelativePath)
 		OnScriptEnd.Broadcast(ScriptEndedPath);
 	};
 	//for now hardwire port
-	Cmd->RunScript(ScriptRelativePath, 3000);
+	Cmd->RunScript(ScriptRelativePath, StaticAvailablePort);
 }
 
 void UNodeComponent::Emit(const FString& EventName, USIOJsonValue* Message /*= nullptr*/, const FString& Namespace /*= FString(TEXT("/"))*/)

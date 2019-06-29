@@ -32,7 +32,7 @@ public:
 	~FNodeCmd();
 	
 	//Start a node.js script
-	void RunScript(const FString& ScriptRelativePath, int32 Port = 3000);
+	bool RunScript(const FString& ScriptRelativePath, int32 Port = 3000);
 
 	//Todo: add std-emit and on event binds for this pipe
 	void Emit(const FString& Data);
