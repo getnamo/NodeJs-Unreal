@@ -43,7 +43,7 @@ public:
 	void StopMainScript();
 	void StopChildScript();
 
-	bool IsScriptRunning();
+	bool IsMainScriptRunning();
 
 	TFunction<void(const FString& LogMsg)> OnConsoleLog;
 	TFunction<void(const FString& ScriptRelativePath)> OnMainScriptEnd;

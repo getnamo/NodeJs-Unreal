@@ -42,6 +42,10 @@ public:
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = NodeJsProperties)
 	FString DefaultScript;
 
+	//we only allow one script per component
+	UPROPERTY(BlueprintReadOnly, Category = NodeJsProperties)
+	bool bScriptIsRunning;
+
 	//todo: remove blueprint visibility for this, it's an internal function
 	UFUNCTION()
 	void RunWrapperScript(const FString& ScriptRelativePath);

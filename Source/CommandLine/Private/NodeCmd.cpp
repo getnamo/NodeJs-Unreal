@@ -181,7 +181,7 @@ void FNodeCmd::StopChildScript()
 	}
 }
 
-bool FNodeCmd::IsScriptRunning()
+bool FNodeCmd::IsMainScriptRunning()
 {
 	return bIsRunning;
 }

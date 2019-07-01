@@ -14,6 +14,7 @@ UNodeComponent::UNodeComponent()
 	bRunDefaultScriptOnBeginPlay = false;
 	MainScript = TEXT("nodeWrapper.js");
 	DefaultScript = TEXT("child.js");
+	bScriptIsRunning = false;
 
 	Cmd = MakeShareable(new FNodeCmd);
 }
@@ -38,7 +39,7 @@ void UNodeComponent::BeginPlay()
 
 void UNodeComponent::EndPlay(const EEndPlayReason::Type EndPlayReason)
 {
-	if (Cmd->IsScriptRunning())
+	if (Cmd->IsMainScriptRunning())
 	{
 		Cmd->StopMainScript();
 	}
@@ -49,6 +50,7 @@ void UNodeComponent::RunWrapperScript(const FString& ScriptRelativePath)
 	Cmd->OnChildScriptEnd = [this](const FString& ScriptEndedPath)
 	{
 		OnScriptEnd.Broadcast(ScriptEndedPath);
+		bScriptIsRunning = false;
 	};
 	Cmd->OnScriptError = [this](const FString& ScriptPath, const FString& ErrorMessage)
 	{
@@ -58,13 +60,20 @@ void UNodeComponent::RunWrapperScript(const FString& ScriptRelativePath)
 	{
 		OnConsoleLog.Broadcast(ConsoleMessage);
 	};
-	//for now hardwire port
 	Cmd->RunMainScript(ScriptRelativePath, StaticAvailablePort);
 }
 
 void UNodeComponent::RunScript(const FString& ScriptRelativePath)
 {
-	Cmd->RunChildScript(ScriptRelativePath);
+	if (!bScriptIsRunning) 
+	{
+		Cmd->RunChildScript(ScriptRelativePath);
+		bScriptIsRunning = true;
+	}
+	else
+	{
+		UE_LOG(LogTemp, Warning, TEXT("NodeComponent: Script did not start, already running."));
+	}
 }
 
 void UNodeComponent::StopScript()
