@@ -73,5 +73,5 @@ private:
 	FString ProcessDirectory;
 
 	FThreadSafeBool bShouldMainRun;
-	ThreadSafeBool bIsMainRunning;
+	FThreadSafeBool bIsMainRunning;
 };
