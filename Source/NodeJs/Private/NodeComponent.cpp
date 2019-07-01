@@ -56,6 +56,10 @@ void UNodeComponent::RunWrapperScript()
 	{
 		OnConsoleLog.Broadcast(ConsoleMessage);
 	};
+	Cmd->OnChildScriptBegin = [this](int32 ProcessId)
+	{
+		OnScriptBegin.Broadcast(ProcessId);
+	};
 	Cmd->StartupMainScriptIfNeeded();
 }
 

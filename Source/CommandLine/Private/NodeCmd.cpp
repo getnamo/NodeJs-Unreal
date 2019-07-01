@@ -187,7 +187,13 @@ void FNodeCmd::RunChildScript(const FString& ScriptRelativePath)
 {
 	if (bIsMainRunning)
 	{
-		Socket->Emit(TEXT("runChildScript"), ScriptRelativePath);
+		Socket->Emit(TEXT("runChildScript"), ScriptRelativePath, [this](const TArray<TSharedPtr<FJsonValue>>& ResponseArray){
+			ProcessId = ResponseArray[0]->AsNumber();
+			if (OnChildScriptBegin)
+			{
+				OnChildScriptBegin(ProcessId);
+			}
+		});
 	}
 }
 

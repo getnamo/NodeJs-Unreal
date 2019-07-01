@@ -8,6 +8,7 @@
 #include "NodeCmd.h"
 #include "NodeComponent.generated.h"
 
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FNodeSciptBeginSignature, int32, ProcessId);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FNodeConsoleLogSignature, FString, LogMessage);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FNodeScriptEndSignature, FString, FinishedScriptRelativePath);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FNodeScriptErrorSignature, FString, ScriptRelativePath, FString, ErrorMessage);
@@ -24,6 +25,9 @@ public:
 
 	UPROPERTY(BlueprintAssignable, Category = "NodeJs Events")
 	FNodeConsoleLogSignature OnConsoleLog;
+
+	UPROPERTY(BlueprintAssignable, Category = "NodeJs Events")
+	FNodeSciptBeginSignature OnScriptBegin;
 
 	UPROPERTY(BlueprintAssignable, Category = "NodeJs Events")
 	FNodeScriptEndSignature OnScriptEnd;

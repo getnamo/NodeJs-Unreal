@@ -1,4 +1,11 @@
-console.log('Starting up Testbed');
+/**
+	Wraps subprocess IPC between spawned child processes and unreal 
+	via socket.io protocol.
+
+	Support console.log forwarding as well as ipc-event-emitter two way binding.
+
+	Status: early PoC dev builds, unstable api.
+*/
 
 const port = 4269;	//fairly unique
 const app = require('express')();
@@ -25,9 +32,7 @@ const projectRootFolder = pluginRootFolder + "../../";
 const projectContentScriptsFolder = projectRootFolder + "Content/Scripts/";
 const defaultScriptPath = projectContentScriptsFolder;
 
-let ipc = null;
-let child = null;
-
+//Process functions
 const gracefulExit = (socket)=>{
 	console.log('Done, exiting');
 	if(child){
@@ -42,7 +47,7 @@ const gracefulExit = (socket)=>{
 	}, 100);
 }
 
-
+let procId = 1;
 
 const startScript = (scriptName, socket, scriptPath)=>{	
 	//default path is home path
@@ -119,16 +124,30 @@ const startScript = (scriptName, socket, scriptPath)=>{
 
 	ipc.isRunning = true;
 
-	return ipc;
+	let result = {};
+	result.ipc = ipc;
+	result.child = child;
+	result.id = procId;
+	procId++;
+
+	return result;
 }
 
 
-//connection logic
+//Connection logic
 io.on('connection', (socket)=>{
 	//re-direct console.log to our socket.io pipe
 	console.log = (msg) =>{
-		socket.emit(logEvent, msg);
+		io.emit(logEvent, msg);
 	}
+
+	//we scope our connection info so we can route it correctly
+	let ipc = null;
+	let child = null;
+
+	/*todo: bind log to socket - log = (msg, socket) =>{
+		socket.emit(logEvent, msg);
+	}*/
 
 	//Middleware catch all events so we can forward them to our IPCs
 	socket.use((packet, next) => {
@@ -152,9 +171,16 @@ io.on('connection', (socket)=>{
 
 	socket.emit(logEvent, 'Connected as ' + socket.id);
 
-	socket.on(runChildScript, (scriptName)=>{
+	socket.on(runChildScript, (scriptName, startCallback)=>{
 		//Start the specified script
-		ipc = startScript(scriptName, socket, defaultScriptPath);
+		processInfo = startScript(scriptName, socket, defaultScriptPath);
+		ipc = processInfo.ipc;
+		child = processInfo.child;
+
+		if(startCallback){
+			//callback with id for muxing emits from unreal side
+			startCallback(Number(child.pid));
+		}
 
 		console.log('started script: ' + scriptName);
 	});

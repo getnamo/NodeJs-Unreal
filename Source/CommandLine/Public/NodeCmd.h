@@ -25,6 +25,7 @@ public:
 
 	TFunction<void(const FString& LogMsg)> OnConsoleLog;
 	TFunction<void(const FString& ScriptRelativePath)> OnMainScriptEnd;
+	TFunction<void(int32 ProcessId)> OnChildScriptBegin;
 	TFunction<void(const FString& ScriptRelativePath)> OnChildScriptEnd;
 	TFunction<void(const FString& ScriptRelativePath, const FString& ScriptErrorMessage)> OnScriptError;
 
@@ -32,6 +33,7 @@ public:
 
 	FString DefaultMainScript;
 	int32 DefaultPort;
+	int32 ProcessId;
 
 private:
 	//start wrapper script
