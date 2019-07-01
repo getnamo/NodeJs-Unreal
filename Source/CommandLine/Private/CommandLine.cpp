@@ -11,11 +11,7 @@
 
 void FCommandLineModule::StartupModule()
 {
-	/*Cmd = MakeShareable(new FNodeCmd());
-	FString Script = TEXT("TestBed.js");
-	UE_LOG(LogTemp, Log, TEXT("ScriptStart"));
-	Cmd->RunScript(Script);
-	UE_LOG(LogTemp, Log, TEXT("ScriptEnd"));*/
+
 }
 
 void FCommandLineModule::ShutdownModule()

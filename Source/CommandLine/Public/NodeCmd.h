@@ -15,9 +15,6 @@ public:
 	//Start a node.js script
 	void RunChildScript(const FString& ScriptRelativePath);
 
-	//Todo: add std-emit and on event binds for this pipe
-	void Emit(const FString& Data);
-
 	//Forcefully stop the script
 	void StopMainScript();
 	void StopChildScript();
@@ -38,9 +35,10 @@ public:
 
 private:
 	//start wrapper script
-	bool RunMainScript(const FString& ScriptRelativePath, int32 Port = 3000);
+	bool RunMainScript(FString ScriptRelativePath, int32 Port = 3000);
 
 	FString ProcessDirectory;
+	FString PluginContentRelativePath;
 
 	FThreadSafeBool bShouldMainRun;
 	FThreadSafeBool bIsMainRunning;

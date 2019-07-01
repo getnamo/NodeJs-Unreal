@@ -15,12 +15,24 @@ const stopMainScript = "stopMainScript";
 const childScriptEnd = "childScriptEnd";
 const childScriptError = "childScriptError";
 const runChildScript = "runChildScript";
+const stopChildScript = "stopChildScript";
 const logEvent = "console.log";	//uniqueish
 
+//folders
+const pluginRootFolder = "../../../";
+const pluginContentScriptsFolder = pluginRootFolder + "Content/Scripts/";
+const projectRootFolder = pluginRootFolder + "../../";
+const projectContentScriptsFolder = projectRootFolder + "Content/Scripts/";
+const defaultScriptPath = projectContentScriptsFolder;
+
 let ipc = null;
+let child = null;
 
 const gracefulExit = (socket)=>{
 	console.log('Done, exiting');
+	if(child){
+		child.disconnect();
+	}
 	io.emit('stdout', 'Exit');
 	io.emit(mainScriptEnd);
 
@@ -30,6 +42,8 @@ const gracefulExit = (socket)=>{
 	}, 100);
 }
 
+
+
 const startScript = (scriptName, socket, scriptPath)=>{	
 	//default path is home path
 	if(!scriptPath){
@@ -37,10 +51,10 @@ const startScript = (scriptName, socket, scriptPath)=>{
 	}
 	let fullScriptPath = scriptPath + scriptName;
 
-	let child = childProcess.fork(scriptPath + scriptName, [], { silent: true });
+	child = childProcess.fork(scriptPath + scriptName, [], { silent: true });
 	ipc = new IPCEventEmitter(child);
 
-	console.log(fullScriptPath + ' started.');
+	//console.log(fullScriptPath + ' started.');
 
 	//catch messages directly and auto-forward the messages to our socket.io pipe
 	child.on('message', data =>{
@@ -64,7 +78,7 @@ const startScript = (scriptName, socket, scriptPath)=>{
 		}
 	});
 
-	let lastError = null;
+	let lastError = "";
 
 	//wrap around stderr to catch compile errors
 	child.stderr.setEncoding('utf8');
@@ -72,9 +86,7 @@ const startScript = (scriptName, socket, scriptPath)=>{
 		//for some reason we get newlines separately, just spit out the long error event
 		if(err.length>1){
 			//set last error, we will emit on process.exit
-
-			lastError = err.trim();
-			//console.log(lastError);
+			lastError = lastError + err.trim();
 		}
 	});
 
@@ -83,25 +95,22 @@ const startScript = (scriptName, socket, scriptPath)=>{
 	child.stdout.on('data', (msg)=>{
 		let finalMsg = msg.toString().trim();
 		console.log(finalMsg);
-
-		//log any child process console.log to our unreal log
-		if(socket){
-			socket.emit('log', finalMsg);
-		}
 	});
 
 	child.on('exit', (code, signal) =>{
-		console.log(scriptPath + ' finished with ' + code);
+		//console.log(fullScriptPath + ' finished with ' + code);
 		//abnormal process exit, emit error back to unreal via sio
 		if(code == 1){
 			//console.log('child error: ' + lastError);
 			if(socket){
 				socket.emit('childScriptError', lastError);
+				lastError = "";
 			}
 
 		}
 		//clear up our ipc
 		ipc.isRunning = false;
+		child = null;
 
 		if(socket){
 			socket.emit(childScriptEnd, fullScriptPath);
@@ -109,18 +118,6 @@ const startScript = (scriptName, socket, scriptPath)=>{
 	});
 
 	ipc.isRunning = true;
-	
-	//todo: replace these with catch-all links
-	/*ipc.on('ready', () => {
-		console.log('got "ready", sending "ping"');
-		ipc.emit('ping');
-	});
-	ipc.on('pong', () => {
-		console.log('got "pong", disconnecting');
-		child.disconnect();
-	});*/
-
-	//console.log(ipc);
 
 	return ipc;
 }
@@ -133,15 +130,12 @@ io.on('connection', (socket)=>{
 		socket.emit(logEvent, msg);
 	}
 
-	//Middleware all event catcher so we can forward them to our IPCs
+	//Middleware catch all events so we can forward them to our IPCs
 	socket.use((packet, next) => {
-    	// Handler
+    	//socket.emit(logEvent, packet);
+    	//socket.emit(logEvent, 'Is ipc valid? ' + (ipc != null));
 
-    	//debug this back for now
-    	socket.emit(logEvent, packet);
-    	socket.emit(logEvent, 'Is ipc valid? ' + (ipc != null));
-
-    	//do we have a child running?
+    	//do we have a valid child running?
     	if(ipc && ipc.isRunning){
     		let eventName = packet[0];
     		let args = packet[1];
@@ -160,16 +154,23 @@ io.on('connection', (socket)=>{
 
 	socket.on(runChildScript, (scriptName)=>{
 		//Start the specified script
-		ipc = startScript(scriptName, socket);
+		ipc = startScript(scriptName, socket, defaultScriptPath);
 
-		socket.emit(logEvent, 'started script: ' + scriptName);
-		
-		//todo: catch all socket.io events map to ipc events
+		console.log('started script: ' + scriptName);
 	});
 
 	socket.on(stopMainScript, (stopType)=>{
 		console.log('Stopping main script due to ' + stopType);
 		gracefulExit();
+	});
+
+	socket.on(stopChildScript, ()=>{
+		if(child && ipc){
+			ipc.emit('kill');
+			setTimeout(()=>{
+				child.disconnect();
+			},100);
+		}
 	});
 });
 

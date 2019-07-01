@@ -36,6 +36,7 @@ FNodeCmd::FNodeCmd()
 	DefaultPort = 4269;
 	bShouldMainRun = true;
 	ProcessDirectory = FPaths::ConvertRelativePathToFull(FPaths::ProjectDir() + "Plugins/nodejs-ue4/Source/ThirdParty/node");
+	PluginContentRelativePath = TEXT("../../../Content/Scripts/");
 	OnMainScriptEnd = nullptr;
 	OnChildScriptEnd = nullptr;
 	OnScriptError = nullptr;
@@ -61,11 +62,11 @@ void FNodeCmd::StartupMainScriptIfNeeded()
 {
 	if (!bIsMainRunning) 
 	{
-		RunMainScript(DefaultMainScript, DefaultPort);
+		RunMainScript(PluginContentRelativePath + DefaultMainScript, DefaultPort);
 	}
 }
 
-bool FNodeCmd::RunMainScript(const FString& ScriptRelativePath, int32 Port)
+bool FNodeCmd::RunMainScript(FString ScriptRelativePath, int32 Port)
 {
 	//Script already running? return false
 	if (bIsMainRunning) 
@@ -106,7 +107,7 @@ bool FNodeCmd::RunMainScript(const FString& ScriptRelativePath, int32 Port)
 			OnChildScriptEnd(SafeChildPathMessage);
 		}
 	});
-	Socket->OnEvent(TEXT("childScriptError"), [&](const FString& Event, const TSharedPtr<FJsonValue>& Message)
+	Socket->OnEvent(TEXT("childScriptError"), [&, ScriptRelativePath](const FString& Event, const TSharedPtr<FJsonValue>& Message)
 	{
 		UE_LOG(LogTemp, Error, TEXT("Script Error: %s"), *USIOJConvert::ToJsonString(Message));
 		const FString SafePath = ScriptRelativePath;
@@ -118,7 +119,6 @@ bool FNodeCmd::RunMainScript(const FString& ScriptRelativePath, int32 Port)
 		}
 	});
 
-	//NB: a new script run means events would need to be rebound... todo: keep a list of events bound and auto-rebind
 	Socket->Connect(FString::Printf(TEXT("http://localhost:%d"), Port));
 
 
@@ -153,7 +153,6 @@ bool FNodeCmd::RunMainScript(const FString& ScriptRelativePath, int32 Port)
 
 		PROCESS_INFORMATION piProcInfo = CreateChildProcess(NodeExe, ScriptRelativePath, ProcessDirectory);
 
-		//ReadFromPipe();
 		while (bShouldMainRun)
 		{
 			FPlatformProcess::Sleep(0.1f);
@@ -190,11 +189,6 @@ void FNodeCmd::RunChildScript(const FString& ScriptRelativePath)
 	{
 		Socket->Emit(TEXT("runChildScript"), ScriptRelativePath);
 	}
-}
-
-void FNodeCmd::Emit(const FString& Data)
-{
-	Socket->Emit(TEXT("stdin"), Data);
 }
 
 void FNodeCmd::StopMainScript()
