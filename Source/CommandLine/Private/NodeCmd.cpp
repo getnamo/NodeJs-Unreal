@@ -1,20 +1,40 @@
 #include "NodeCmd.h"
 #include "SIOJConvert.h"
 
+//Windows Includes
+#include "PreWindowsApi.h"
+#include "AllowWindowsPlatformTypes.h"
+//#include "AllowWindowsPlatformAtomics.h"
+
+#include "Windows.h"
+#include <tchar.h>
+#include <stdio.h> 
+#include <strsafe.h>
+#include <string>
+#include <iostream>
+#pragma comment(lib, "User32.lib")
+
+//#include "HideWindowsPlatformAtomics.h"
+#include "HideWindowsPlatformTypes.h"
+#include "PostWindowsApi.h"
+//End Windows
+
 
 #define BUFSIZE 4096
 
-//largely from https://stackoverflow.com/questions/14147138/capture-output-of-spawned-process-to-string
+//windows vars set as static such that they don't get exposed. Only one main process is run anyway.
+HANDLE g_hChildStd_OUT_Rd = nullptr;
+HANDLE g_hChildStd_OUT_Wr = nullptr;
+HANDLE g_hChildStd_ERR_Rd = nullptr;
+HANDLE g_hChildStd_ERR_Wr = nullptr;
+HANDLE g_hChildStd_IN_Rd = nullptr;
+PROCESS_INFORMATION CreateChildProcess(const FString& Process, const FString& Commands, const FString& InProcessDirectory);
 
 FNodeCmd::FNodeCmd()
 {
 	DefaultMainScript = TEXT("nodeWrapper.js");
 	DefaultPort = 4269;
 	bShouldMainRun = true;
-	g_hChildStd_OUT_Rd = NULL;
-	g_hChildStd_OUT_Wr = NULL;
-	g_hChildStd_ERR_Rd = NULL;
-	g_hChildStd_ERR_Wr = NULL;
 	ProcessDirectory = FPaths::ConvertRelativePathToFull(FPaths::ProjectDir() + "Plugins/nodejs-ue4/Source/ThirdParty/node");
 	OnMainScriptEnd = nullptr;
 	OnChildScriptEnd = nullptr;
@@ -131,7 +151,7 @@ bool FNodeCmd::RunMainScript(const FString& ScriptRelativePath, int32 Port)
 
 		bShouldMainRun = true;
 
-		PROCESS_INFORMATION piProcInfo = CreateChildProcess(NodeExe, ScriptRelativePath);
+		PROCESS_INFORMATION piProcInfo = CreateChildProcess(NodeExe, ScriptRelativePath, ProcessDirectory);
 
 		//ReadFromPipe();
 		while (bShouldMainRun)
@@ -197,7 +217,11 @@ bool FNodeCmd::IsMainScriptRunning()
 	return bIsMainRunning;
 }
 
-PROCESS_INFORMATION FNodeCmd::CreateChildProcess(const FString& Process, const FString& Commands) {
+PROCESS_INFORMATION CreateChildProcess(const FString& Process, const FString& Commands, const FString& InProcessDirectory) {
+
+	//largely from https://stackoverflow.com/questions/14147138/capture-output-of-spawned-process-to-string
+	//pipe architecture no longer used in favor of socket.io pipe for ipc
+	
 	PROCESS_INFORMATION piProcInfo;
 	STARTUPINFO siStartInfo;
 	bool bSuccess = 0;
@@ -211,10 +235,9 @@ PROCESS_INFORMATION FNodeCmd::CreateChildProcess(const FString& Process, const F
 	siStartInfo.cb = sizeof(STARTUPINFO);
 	siStartInfo.hStdError = g_hChildStd_ERR_Wr;
 	siStartInfo.hStdOutput = g_hChildStd_OUT_Wr;
-	//siStartInfo.hStdInput = g_hChildStd_IN_Rd;
 	siStartInfo.dwFlags |= STARTF_USESTDHANDLES;
 
-	FString ProcessPath = ProcessDirectory + TEXT("/") + Process;
+	FString ProcessPath = InProcessDirectory + TEXT("/") + Process;
 	FString Command = Process + TEXT(" ") + Commands;
 
 	// Create the child process. 
@@ -225,7 +248,7 @@ PROCESS_INFORMATION FNodeCmd::CreateChildProcess(const FString& Process, const F
 		1,				// handles are inherited 
 		CREATE_NO_WINDOW,     // creation flags, no window
 		NULL,				  // use parent's environment 
-		*ProcessDirectory,       // use parent's current directory 
+		*InProcessDirectory,       // use parent's current directory 
 		&siStartInfo,  // STARTUPINFO pointer 
 		&piProcInfo);  // receives PROCESS_INFORMATION
 	CloseHandle(g_hChildStd_ERR_Wr);
@@ -236,57 +259,4 @@ PROCESS_INFORMATION FNodeCmd::CreateChildProcess(const FString& Process, const F
 	}
 	return piProcInfo;
 }
-
-
-void FNodeCmd::ReadFromPipe() {
-	DWORD dwRead;
-	CHAR chBuf[BUFSIZE];
-	bool bSuccess = false;
-	std::string out = "", err = "";
-	for (;;) 
-	{
-		bSuccess = ReadFile(g_hChildStd_OUT_Rd, chBuf, BUFSIZE, &dwRead, NULL);
-		if (!bSuccess || dwRead == 0) break;
-
-		std::string s(chBuf, dwRead);
-		out += s;
-	}
-	dwRead = 0;
-	for (;;) 
-	{
-		bSuccess = ReadFile(g_hChildStd_ERR_Rd, chBuf, BUFSIZE, &dwRead, NULL);
-		if (!bSuccess || dwRead == 0) break;
-
-		std::string s(chBuf, dwRead);
-		err += s;
-	}
-
-	if (out.length() > 0) 
-	{
-		UE_LOG(LogTemp, Log, TEXT("out: %s"), *FString(UTF8_TO_TCHAR(out.c_str())));
-	}
-}
-
-void FNodeCmd::WriteToPipe(FString Data)
-{
-	//Currently broken
-
-	/*DWORD dwWritten;
-	CHAR chBuf[BUFSIZE];
-	BOOL bSuccess = FALSE;
-
-	for (;;)
-	{
-		bSuccess = WriteFile(g_hChildStd_OUT_Wr, *Data, Data.Len(), &dwWritten, NULL);
-		if (!bSuccess) break;
-	}
-
-	// Close the pipe handle so the child process stops reading. 
-
-	if (!CloseHandle(g_hChildStd_IN_Wr))
-		ErrorExit(TEXT("StdInWr CloseHandle"));*/
-}
-
-
-
 
