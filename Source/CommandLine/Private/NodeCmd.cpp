@@ -15,6 +15,7 @@ FNodeCmd::FNodeCmd()
 	g_hChildStd_ERR_Wr = NULL;
 	ProcessDirectory = FPaths::ConvertRelativePathToFull(FPaths::ProjectDir() + "Plugins/nodejs-ue4/Source/ThirdParty/node");
 	OnScriptFinished = nullptr;
+	OnScriptError = nullptr;
 	Socket = MakeShareable(new FSocketIONative);
 }
 
@@ -56,9 +57,25 @@ bool FNodeCmd::RunScript(const FString& ScriptRelativePath, int32 Port)
 	});
 	Socket->OnEvent(TEXT("scriptDone"), [&](const FString& Event, const TSharedPtr<FJsonValue>& Message)
 	{
-		UE_LOG(LogTemp, Log, TEXT("%s"), *USIOJConvert::ToJsonString(Message));
+		UE_LOG(LogTemp, Log, TEXT("scriptDone %s"), *USIOJConvert::ToJsonString(Message));
 		Socket->Disconnect();
 		bShouldRun = false;
+	});
+	Socket->OnEvent(TEXT("processError"), [&](const FString& Event, const TSharedPtr<FJsonValue>& Message)
+	{
+		UE_LOG(LogTemp, Log, TEXT("%s"), *USIOJConvert::ToJsonString(Message));
+		const FString SafePath = ScriptRelativePath;
+		const FString SafeErrorMessage = USIOJConvert::ToJsonString(Message);
+		
+		TFunction<void()> GTCallback = [this, SafePath, SafeErrorMessage]
+		{
+			bIsRunning = false;
+			if (OnScriptError)
+			{
+				OnScriptError(SafePath, SafeErrorMessage);
+			}
+		};
+		Async(EAsyncExecution::TaskGraph, GTCallback);
 	});
 
 	//NB: a new script run means events would need to be rebound... todo: keep a list of events bound and auto-rebind

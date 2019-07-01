@@ -9,6 +9,7 @@
 #include "NodeComponent.generated.h"
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FNodeScriptEndSignature, FString, FinishedScriptRelativePath);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FNodeScriptErrorSignature, FString, ScriptRelativePath, FString, ErrorMessage);
 
 UCLASS( ClassGroup=(Custom), meta=(BlueprintSpawnableComponent) )
 class NODEJS_API UNodeComponent : public UActorComponent
@@ -22,6 +23,9 @@ public:
 
 	UPROPERTY(BlueprintAssignable, Category = "NodeJs Events")
 	FNodeScriptEndSignature OnScriptEnd;
+
+	UPROPERTY(BlueprintAssignable, Category = "NodeJs Events")
+	FNodeScriptErrorSignature OnScriptError;
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = NodeJsProperties)
 	bool bRunDefaultScriptOnBeginPlay;

@@ -11,6 +11,10 @@ void UNodeComponent::RunScript(const FString& ScriptRelativePath)
 	{
 		OnScriptEnd.Broadcast(ScriptEndedPath);
 	};
+	Cmd->OnScriptError = [this](const FString& ScriptPath, const FString& ErrorMessage)
+	{
+
+	};
 	//for now hardwire port
 	Cmd->RunScript(ScriptRelativePath, StaticAvailablePort);
 }
@@ -52,9 +56,9 @@ void UNodeComponent::EmitWithCallBack(const FString& EventName, USIOJsonValue* M
 		}
 
 		Cmd->Socket->Emit(EventName, JsonMessage, [&, Target, CallbackFunctionName, this](const TArray<TSharedPtr<FJsonValue>>& Response)
-			{
-				CallBPFunctionWithResponse(Target, CallbackFunctionName, Response);
-			}, Namespace);
+		{
+			CallBPFunctionWithResponse(Target, CallbackFunctionName, Response);
+		}, Namespace);
 	}
 	else
 	{
