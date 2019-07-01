@@ -1,4 +1,6 @@
 # nodejs-ue4
 Embedd node.js as an unreal plugin.
 
-Not yet functional, WIP.
+nearly functional, WIP.
+
+See: https://github.com/getnamo/nodejs-ue4/issues/1 for progress.
