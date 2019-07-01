@@ -46,10 +46,6 @@ public:
 	UPROPERTY(BlueprintReadOnly, Category = NodeJsProperties)
 	bool bScriptIsRunning;
 
-	//todo: remove blueprint visibility for this, it's an internal function
-	UFUNCTION()
-	void RunWrapperScript(const FString& ScriptRelativePath);
-
 	/** Run your scripts here */
 	UFUNCTION(BlueprintCallable, Category = "NodeJs Functions")
 	void RunScript(const FString& ScriptRelativePath);
@@ -98,6 +94,8 @@ public:
 
 
 protected:
+	void RunWrapperScript();
+
 	virtual void BeginPlay() override;
 
 	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
@@ -106,6 +104,4 @@ protected:
 
 private:
 	TSharedPtr<FNodeCmd> Cmd;
-
-	FString MainScript;
 };

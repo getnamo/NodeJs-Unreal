@@ -2,9 +2,6 @@
 #include "NodeComponent.h"
 #include "SIOMessageConvert.h"
 
-//todo: rotate ports if running more than one script in total, that needs to be passed down to script master
-int32 StaticAvailablePort = 4269;
-
 // Sets default values for this component's properties
 UNodeComponent::UNodeComponent()
 {
@@ -12,7 +9,6 @@ UNodeComponent::UNodeComponent()
 
 	bRunMainScriptOnBeginPlay = true;
 	bRunDefaultScriptOnBeginPlay = false;
-	MainScript = TEXT("nodeWrapper.js");
 	DefaultScript = TEXT("child.js");
 	bScriptIsRunning = false;
 
@@ -28,7 +24,7 @@ void UNodeComponent::BeginPlay()
 	if (bRunMainScriptOnBeginPlay)
 	{
 		//Start the parent script which hosts all scripts
-		RunWrapperScript(MainScript);
+		RunWrapperScript();
 		if (bRunDefaultScriptOnBeginPlay)
 		{
 			RunScript(DefaultScript);
@@ -45,7 +41,7 @@ void UNodeComponent::EndPlay(const EEndPlayReason::Type EndPlayReason)
 	}
 }
 
-void UNodeComponent::RunWrapperScript(const FString& ScriptRelativePath)
+void UNodeComponent::RunWrapperScript()
 {
 	Cmd->OnChildScriptEnd = [this](const FString& ScriptEndedPath)
 	{
@@ -60,7 +56,7 @@ void UNodeComponent::RunWrapperScript(const FString& ScriptRelativePath)
 	{
 		OnConsoleLog.Broadcast(ConsoleMessage);
 	};
-	Cmd->RunMainScript(ScriptRelativePath, StaticAvailablePort);
+	Cmd->StartupMainScriptIfNeeded();
 }
 
 void UNodeComponent::RunScript(const FString& ScriptRelativePath)

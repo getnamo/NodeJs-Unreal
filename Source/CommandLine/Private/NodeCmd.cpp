@@ -8,7 +8,9 @@
 
 FNodeCmd::FNodeCmd()
 {
-	bShouldRun = true;
+	DefaultMainScript = TEXT("nodeWrapper.js");
+	DefaultPort = 4269;
+	bShouldMainRun = true;
 	g_hChildStd_OUT_Rd = NULL;
 	g_hChildStd_OUT_Wr = NULL;
 	g_hChildStd_ERR_Rd = NULL;
@@ -23,10 +25,11 @@ FNodeCmd::FNodeCmd()
 
 FNodeCmd::~FNodeCmd()
 {
-	bShouldRun = false;
+	//todo: convert to listener & static alloc
+	bShouldMainRun = false;
 
 	//block until the other thread quits
-	while (bIsRunning)
+	while (bIsMainRunning)
 	{
 
 	}
@@ -34,10 +37,18 @@ FNodeCmd::~FNodeCmd()
 	Socket->Disconnect();
 }
 
+void FNodeCmd::StartupMainScriptIfNeeded()
+{
+	if (!bIsMainRunning) 
+	{
+		RunMainScript(DefaultMainScript, DefaultPort);
+	}
+}
+
 bool FNodeCmd::RunMainScript(const FString& ScriptRelativePath, int32 Port)
 {
 	//Script already running? return false
-	if (bIsRunning) 
+	if (bIsMainRunning) 
 	{
 		return false;
 	}
@@ -65,7 +76,7 @@ bool FNodeCmd::RunMainScript(const FString& ScriptRelativePath, int32 Port)
 	{
 		UE_LOG(LogTemp, Log, TEXT("mainScriptEnd %s"), *USIOJConvert::ToJsonString(Message));
 		Socket->Disconnect();
-		bShouldRun = false;
+		bShouldMainRun = false;
 	});
 	Socket->OnEvent(TEXT("childScriptEnd"), [&](const FString& Event, const TSharedPtr<FJsonValue>& Message)
 	{
@@ -94,7 +105,7 @@ bool FNodeCmd::RunMainScript(const FString& ScriptRelativePath, int32 Port)
 	TFunction<void()> Task = [&, ScriptRelativePath]
 	{
 		UE_LOG(LogTemp, Log, TEXT("node thread start"));
-		bIsRunning = true;
+		bIsMainRunning = true;
 
 		SECURITY_ATTRIBUTES sa;
 		// Set the bInheritHandle flag so pipe handles are inherited. 
@@ -118,12 +129,12 @@ bool FNodeCmd::RunMainScript(const FString& ScriptRelativePath, int32 Port)
 			return;
 		}
 
-		bShouldRun = true;
+		bShouldMainRun = true;
 
 		PROCESS_INFORMATION piProcInfo = CreateChildProcess(NodeExe, ScriptRelativePath);
 
 		//ReadFromPipe();
-		while (bShouldRun)
+		while (bShouldMainRun)
 		{
 			FPlatformProcess::Sleep(0.1f);
 		}
@@ -139,7 +150,7 @@ bool FNodeCmd::RunMainScript(const FString& ScriptRelativePath, int32 Port)
 
 		TFunction<void()> GTCallback = [this, FinishPath]
 		{
-			bIsRunning = false;
+			bIsMainRunning = false;
 			if (OnMainScriptEnd)
 			{
 				OnMainScriptEnd(FinishPath);
@@ -155,7 +166,7 @@ bool FNodeCmd::RunMainScript(const FString& ScriptRelativePath, int32 Port)
 
 void FNodeCmd::RunChildScript(const FString& ScriptRelativePath)
 {
-	if (bIsRunning)
+	if (bIsMainRunning)
 	{
 		Socket->Emit(TEXT("runChildScript"), ScriptRelativePath);
 	}
@@ -170,12 +181,12 @@ void FNodeCmd::StopMainScript()
 {
 	Socket->Emit(TEXT("stopMainScript"), TEXT("ForceStop"));
 	Socket->Disconnect();
-	bShouldRun = false;
+	bShouldMainRun = false;
 }
 
 void FNodeCmd::StopChildScript()
 {
-	if (bIsRunning) 
+	if (bIsMainRunning) 
 	{
 		Socket->Emit(TEXT("stopChildScript"), TEXT("ForceStop"));
 	}
@@ -183,7 +194,7 @@ void FNodeCmd::StopChildScript()
 
 bool FNodeCmd::IsMainScriptRunning()
 {
-	return bIsRunning;
+	return bIsMainRunning;
 }
 
 PROCESS_INFORMATION FNodeCmd::CreateChildProcess(const FString& Process, const FString& Commands) {

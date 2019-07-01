@@ -32,8 +32,6 @@ public:
 	~FNodeCmd();
 	
 	//Start a node.js script
-	bool RunMainScript(const FString& ScriptRelativePath, int32 Port = 3000);
-
 	void RunChildScript(const FString& ScriptRelativePath);
 
 	//Todo: add std-emit and on event binds for this pipe
@@ -45,6 +43,8 @@ public:
 
 	bool IsMainScriptRunning();
 
+	void StartupMainScriptIfNeeded();
+
 	TFunction<void(const FString& LogMsg)> OnConsoleLog;
 	TFunction<void(const FString& ScriptRelativePath)> OnMainScriptEnd;
 	TFunction<void(const FString& ScriptRelativePath)> OnChildScriptEnd;
@@ -52,7 +52,13 @@ public:
 
 	TSharedPtr<FSocketIONative> Socket;
 
+	FString DefaultMainScript;
+	int32 DefaultPort;
+
 private:
+	//start wrapper script
+	bool RunMainScript(const FString& ScriptRelativePath, int32 Port = 3000);
+
 	HANDLE g_hChildStd_OUT_Rd;
 	HANDLE g_hChildStd_OUT_Wr;
 	HANDLE g_hChildStd_ERR_Rd;
@@ -66,6 +72,6 @@ private:
 
 	FString ProcessDirectory;
 
-	FThreadSafeBool bShouldRun;
-	FThreadSafeBool bIsRunning;
+	static FThreadSafeBool bShouldMainRun;
+	static FThreadSafeBool bIsMainRunning;
 };
