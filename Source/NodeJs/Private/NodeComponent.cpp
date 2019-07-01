@@ -5,18 +5,26 @@
 //todo: rotate ports if running more than one script in total, that needs to be passed down to script master
 int32 StaticAvailablePort = 4269;
 
-void UNodeComponent::RunScript(const FString& ScriptRelativePath)
+void UNodeComponent::RunMainScript(const FString& ScriptRelativePath)
 {
-	Cmd->OnScriptFinished = [this](const FString& ScriptEndedPath)
+	Cmd->OnChildScriptEnd = [this](const FString& ScriptEndedPath)
 	{
 		OnScriptEnd.Broadcast(ScriptEndedPath);
 	};
 	Cmd->OnScriptError = [this](const FString& ScriptPath, const FString& ErrorMessage)
 	{
-
+		OnScriptError.Broadcast(ScriptPath, ErrorMessage);
 	};
 	//for now hardwire port
 	Cmd->RunScript(ScriptRelativePath, StaticAvailablePort);
+}
+
+void UNodeComponent::RunScript(const FString& ScriptRelativePath)
+{
+	if (Cmd->IsScriptRunning())
+	{
+		Cmd->Socket->Emit("runScript", ScriptRelativePath);
+	}
 }
 
 void UNodeComponent::Emit(const FString& EventName, USIOJsonValue* Message /*= nullptr*/, const FString& Namespace /*= FString(TEXT("/"))*/)
@@ -82,8 +90,9 @@ UNodeComponent::UNodeComponent()
 {
 	PrimaryComponentTick.bCanEverTick = false;
 
-	bRunDefaultScriptOnBeginPlay = false;
-	DefaultScript = TEXT("Testbed.js");
+	bRunMainScriptOnBeginPlay = false;
+	DefaultMainScript = TEXT("nodeWrapper.js");
+	DefaultScript = TEXT("child.js");
 
 	Cmd = MakeShareable(new FNodeCmd);
 }
@@ -94,9 +103,13 @@ void UNodeComponent::BeginPlay()
 {
 	Super::BeginPlay();
 
-	if (bRunDefaultScriptOnBeginPlay)
+	if (bRunMainScriptOnBeginPlay)
 	{
-		RunScript(DefaultScript);
+		RunMainScript(DefaultScript);
+		if (bRunDefaultScriptOnBeginPlay) 
+		{
+
+		}
 	}
 }
 

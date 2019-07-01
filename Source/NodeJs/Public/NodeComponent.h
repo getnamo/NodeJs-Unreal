@@ -28,11 +28,19 @@ public:
 	FNodeScriptErrorSignature OnScriptError;
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = NodeJsProperties)
+	bool bRunMainScriptOnBeginPlay;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = NodeJsProperties)
 	bool bRunDefaultScriptOnBeginPlay;
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = NodeJsProperties)
 	FString DefaultScript;
 
+	//todo: remove blueprint visibility for this, it's an internal function
+	UFUNCTION(BlueprintCallable, Category = "NodeJs Functions")
+	void RunMainScript(const FString& ScriptRelativePath);
+
+	/** Run your scripts here */
 	UFUNCTION(BlueprintCallable, Category = "NodeJs Functions")
 	void RunScript(const FString& ScriptRelativePath);
 
@@ -83,4 +91,6 @@ protected:
 
 private:
 	TSharedPtr<FNodeCmd> Cmd;
+
+	FString DefaultMainScript;
 };

@@ -8,13 +8,14 @@
 
 FNodeCmd::FNodeCmd()
 {
-	bShouldRun = false;
+	bShouldRun = true;
 	g_hChildStd_OUT_Rd = NULL;
 	g_hChildStd_OUT_Wr = NULL;
 	g_hChildStd_ERR_Rd = NULL;
 	g_hChildStd_ERR_Wr = NULL;
 	ProcessDirectory = FPaths::ConvertRelativePathToFull(FPaths::ProjectDir() + "Plugins/nodejs-ue4/Source/ThirdParty/node");
-	OnScriptFinished = nullptr;
+	OnMainScriptEnd = nullptr;
+	OnChildScriptEnd = nullptr;
 	OnScriptError = nullptr;
 	Socket = MakeShareable(new FSocketIONative);
 }
@@ -55,21 +56,32 @@ bool FNodeCmd::RunScript(const FString& ScriptRelativePath, int32 Port)
 	{
 		UE_LOG(LogTemp, Log, TEXT("%s"), *USIOJConvert::ToJsonString(Message));
 	});
-	Socket->OnEvent(TEXT("scriptDone"), [&](const FString& Event, const TSharedPtr<FJsonValue>& Message)
+	Socket->OnEvent(TEXT("mainScriptEnd"), [&](const FString& Event, const TSharedPtr<FJsonValue>& Message)
 	{
-		UE_LOG(LogTemp, Log, TEXT("scriptDone %s"), *USIOJConvert::ToJsonString(Message));
+		UE_LOG(LogTemp, Log, TEXT("mainScriptEnd %s"), *USIOJConvert::ToJsonString(Message));
 		Socket->Disconnect();
 		bShouldRun = false;
 	});
-	Socket->OnEvent(TEXT("processError"), [&](const FString& Event, const TSharedPtr<FJsonValue>& Message)
+	Socket->OnEvent(TEXT("childScriptEnd"), [&](const FString& Event, const TSharedPtr<FJsonValue>& Message)
 	{
-		UE_LOG(LogTemp, Log, TEXT("%s"), *USIOJConvert::ToJsonString(Message));
+		const FString SafeChildPathMessage = USIOJConvert::ToJsonString(Message);
+		TFunction<void()> GTCallback = [this, SafeChildPathMessage]
+		{
+			if (OnChildScriptEnd)
+			{
+				OnChildScriptEnd(SafeChildPathMessage);
+			}
+		};
+		Async(EAsyncExecution::TaskGraph, GTCallback);
+	});
+	Socket->OnEvent(TEXT("childScriptError"), [&](const FString& Event, const TSharedPtr<FJsonValue>& Message)
+	{
+		UE_LOG(LogTemp, Error, TEXT("Script Error: %s"), *USIOJConvert::ToJsonString(Message));
 		const FString SafePath = ScriptRelativePath;
 		const FString SafeErrorMessage = USIOJConvert::ToJsonString(Message);
 		
 		TFunction<void()> GTCallback = [this, SafePath, SafeErrorMessage]
 		{
-			bIsRunning = false;
 			if (OnScriptError)
 			{
 				OnScriptError(SafePath, SafeErrorMessage);
@@ -133,9 +145,9 @@ bool FNodeCmd::RunScript(const FString& ScriptRelativePath, int32 Port)
 		TFunction<void()> GTCallback = [this, FinishPath]
 		{
 			bIsRunning = false;
-			if (OnScriptFinished)
+			if (OnMainScriptEnd)
 			{
-				OnScriptFinished(FinishPath);
+				OnMainScriptEnd(FinishPath);
 			}
 		};
 		Async(EAsyncExecution::TaskGraph, GTCallback);
