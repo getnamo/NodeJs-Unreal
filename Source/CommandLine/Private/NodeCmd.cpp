@@ -166,11 +166,19 @@ void FNodeCmd::Emit(const FString& Data)
 	Socket->Emit(TEXT("stdin"), Data);
 }
 
-void FNodeCmd::StopScript()
+void FNodeCmd::StopMainScript()
 {
 	Socket->Emit(TEXT("stopMainScript"), TEXT("ForceStop"));
 	Socket->Disconnect();
 	bShouldRun = false;
+}
+
+void FNodeCmd::StopChildScript()
+{
+	if (bIsRunning) 
+	{
+		Socket->Emit(TEXT("stopChildScript"), TEXT("ForceStop"));
+	}
 }
 
 bool FNodeCmd::IsScriptRunning()

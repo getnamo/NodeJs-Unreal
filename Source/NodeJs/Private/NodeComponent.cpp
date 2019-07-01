@@ -27,7 +27,7 @@ void UNodeComponent::BeginPlay()
 	if (bRunMainScriptOnBeginPlay)
 	{
 		//Start the parent script which hosts all scripts
-		RunMainScript(MainScript);
+		RunWrapperScript(MainScript);
 		if (bRunDefaultScriptOnBeginPlay)
 		{
 			RunScript(DefaultScript);
@@ -40,11 +40,11 @@ void UNodeComponent::EndPlay(const EEndPlayReason::Type EndPlayReason)
 {
 	if (Cmd->IsScriptRunning())
 	{
-		Cmd->StopScript();
+		Cmd->StopMainScript();
 	}
 }
 
-void UNodeComponent::RunMainScript(const FString& ScriptRelativePath)
+void UNodeComponent::RunWrapperScript(const FString& ScriptRelativePath)
 {
 	Cmd->OnChildScriptEnd = [this](const FString& ScriptEndedPath)
 	{
@@ -65,6 +65,11 @@ void UNodeComponent::RunMainScript(const FString& ScriptRelativePath)
 void UNodeComponent::RunScript(const FString& ScriptRelativePath)
 {
 	Cmd->RunChildScript(ScriptRelativePath);
+}
+
+void UNodeComponent::StopScript()
+{
+	Cmd->StopChildScript();
 }
 
 void UNodeComponent::Emit(const FString& EventName, USIOJsonValue* Message /*= nullptr*/, const FString& Namespace /*= FString(TEXT("/"))*/)

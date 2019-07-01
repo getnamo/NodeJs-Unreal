@@ -40,7 +40,8 @@ public:
 	void Emit(const FString& Data);
 
 	//Forcefully stop the script
-	void StopScript();
+	void StopMainScript();
+	void StopChildScript();
 
 	bool IsScriptRunning();
 

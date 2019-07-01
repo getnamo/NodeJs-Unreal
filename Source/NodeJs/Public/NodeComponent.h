@@ -43,12 +43,15 @@ public:
 	FString DefaultScript;
 
 	//todo: remove blueprint visibility for this, it's an internal function
-	UFUNCTION(BlueprintCallable, Category = "NodeJs Functions")
-	void RunMainScript(const FString& ScriptRelativePath);
+	UFUNCTION()
+	void RunWrapperScript(const FString& ScriptRelativePath);
 
 	/** Run your scripts here */
 	UFUNCTION(BlueprintCallable, Category = "NodeJs Functions")
 	void RunScript(const FString& ScriptRelativePath);
+
+	UFUNCTION(BlueprintCallable, Category = "NodeJs Functions")
+	void StopScript();
 
 	/**
 	* Emit an event with a JsonValue message
@@ -87,6 +90,8 @@ public:
 
 	UNodeComponent();
 	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
+
+
 
 protected:
 	virtual void BeginPlay() override;
