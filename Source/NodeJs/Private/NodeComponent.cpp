@@ -5,6 +5,45 @@
 //todo: rotate ports if running more than one script in total, that needs to be passed down to script master
 int32 StaticAvailablePort = 4269;
 
+// Sets default values for this component's properties
+UNodeComponent::UNodeComponent()
+{
+	PrimaryComponentTick.bCanEverTick = false;
+
+	bRunMainScriptOnBeginPlay = true;
+	bRunDefaultScriptOnBeginPlay = false;
+	MainScript = TEXT("nodeWrapper.js");
+	DefaultScript = TEXT("child.js");
+
+	Cmd = MakeShareable(new FNodeCmd);
+}
+
+
+// Called when the game starts
+void UNodeComponent::BeginPlay()
+{
+	Super::BeginPlay();
+
+	if (bRunMainScriptOnBeginPlay)
+	{
+		//Start the parent script which hosts all scripts
+		RunMainScript(MainScript);
+		if (bRunDefaultScriptOnBeginPlay)
+		{
+			RunScript(DefaultScript);
+		}
+	}
+}
+
+
+void UNodeComponent::EndPlay(const EEndPlayReason::Type EndPlayReason)
+{
+	if (Cmd->IsScriptRunning())
+	{
+		Cmd->StopScript();
+	}
+}
+
 void UNodeComponent::RunMainScript(const FString& ScriptRelativePath)
 {
 	Cmd->OnChildScriptEnd = [this](const FString& ScriptEndedPath)
@@ -15,16 +54,17 @@ void UNodeComponent::RunMainScript(const FString& ScriptRelativePath)
 	{
 		OnScriptError.Broadcast(ScriptPath, ErrorMessage);
 	};
+	Cmd->OnConsoleLog = [this](const FString& ConsoleMessage) 
+	{
+		OnConsoleLog.Broadcast(ConsoleMessage);
+	};
 	//for now hardwire port
-	Cmd->RunScript(ScriptRelativePath, StaticAvailablePort);
+	Cmd->RunMainScript(ScriptRelativePath, StaticAvailablePort);
 }
 
 void UNodeComponent::RunScript(const FString& ScriptRelativePath)
 {
-	if (Cmd->IsScriptRunning())
-	{
-		Cmd->Socket->Emit("runScript", ScriptRelativePath);
-	}
+	Cmd->RunChildScript(ScriptRelativePath);
 }
 
 void UNodeComponent::Emit(const FString& EventName, USIOJsonValue* Message /*= nullptr*/, const FString& Namespace /*= FString(TEXT("/"))*/)
@@ -83,43 +123,6 @@ void UNodeComponent::BindEvent(const FString& EventName, const FString& Namespac
 		OnEvent.Broadcast(Event, NewValue);
 
 	}, Namespace);
-}
-
-// Sets default values for this component's properties
-UNodeComponent::UNodeComponent()
-{
-	PrimaryComponentTick.bCanEverTick = false;
-
-	bRunMainScriptOnBeginPlay = false;
-	DefaultMainScript = TEXT("nodeWrapper.js");
-	DefaultScript = TEXT("child.js");
-
-	Cmd = MakeShareable(new FNodeCmd);
-}
-
-
-// Called when the game starts
-void UNodeComponent::BeginPlay()
-{
-	Super::BeginPlay();
-
-	if (bRunMainScriptOnBeginPlay)
-	{
-		RunMainScript(DefaultScript);
-		if (bRunDefaultScriptOnBeginPlay) 
-		{
-
-		}
-	}
-}
-
-
-void UNodeComponent::EndPlay(const EEndPlayReason::Type EndPlayReason)
-{
-	if (Cmd->IsScriptRunning())
-	{
-		Cmd->StopScript();
-	}
 }
 
 bool UNodeComponent::CallBPFunctionWithResponse(UObject* Target, const FString& FunctionName, TArray<TSharedPtr<FJsonValue>> Response)

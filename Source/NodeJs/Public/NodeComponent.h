@@ -8,6 +8,7 @@
 #include "NodeCmd.h"
 #include "NodeComponent.generated.h"
 
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FNodeConsoleLogSignature, FString, LogMessage);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FNodeScriptEndSignature, FString, FinishedScriptRelativePath);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FNodeScriptErrorSignature, FString, ScriptRelativePath, FString, ErrorMessage);
 
@@ -22,16 +23,21 @@ public:
 	FSIOCEventJsonSignature OnEvent;
 
 	UPROPERTY(BlueprintAssignable, Category = "NodeJs Events")
+	FNodeConsoleLogSignature OnConsoleLog;
+
+	UPROPERTY(BlueprintAssignable, Category = "NodeJs Events")
 	FNodeScriptEndSignature OnScriptEnd;
 
 	UPROPERTY(BlueprintAssignable, Category = "NodeJs Events")
 	FNodeScriptErrorSignature OnScriptError;
 
-	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = NodeJsProperties)
-	bool bRunMainScriptOnBeginPlay;
-
+	//set this to true if you'd like the default script to start with the component
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = NodeJsProperties)
 	bool bRunDefaultScriptOnBeginPlay;
+
+	//this should always be true
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = NodeJsProperties)
+	bool bRunMainScriptOnBeginPlay;
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = NodeJsProperties)
 	FString DefaultScript;
@@ -92,5 +98,5 @@ protected:
 private:
 	TSharedPtr<FNodeCmd> Cmd;
 
-	FString DefaultMainScript;
+	FString MainScript;
 };

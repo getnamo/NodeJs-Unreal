@@ -17,6 +17,7 @@ FNodeCmd::FNodeCmd()
 	OnMainScriptEnd = nullptr;
 	OnChildScriptEnd = nullptr;
 	OnScriptError = nullptr;
+	OnConsoleLog = nullptr;
 	Socket = MakeShareable(new FSocketIONative);
 }
 
@@ -33,7 +34,7 @@ FNodeCmd::~FNodeCmd()
 	Socket->Disconnect();
 }
 
-bool FNodeCmd::RunScript(const FString& ScriptRelativePath, int32 Port)
+bool FNodeCmd::RunMainScript(const FString& ScriptRelativePath, int32 Port)
 {
 	//Script already running? return false
 	if (bIsRunning) 
@@ -50,11 +51,15 @@ bool FNodeCmd::RunScript(const FString& ScriptRelativePath, int32 Port)
 	UE_LOG(LogTemp, Log, TEXT("RunScriptStart"));
 	Socket->OnConnectedCallback = [&](const FString& InSessionId)
 	{
-		UE_LOG(LogTemp, Log, TEXT("Connected!"));
+		UE_LOG(LogTemp, Log, TEXT("Main script Connected."));
 	};
-	Socket->OnEvent(TEXT("stdout"), [&](const FString& Event, const TSharedPtr<FJsonValue>& Message)
+	Socket->OnEvent(TEXT("console.log"), [&](const FString& Event, const TSharedPtr<FJsonValue>& Message)
 	{
-		UE_LOG(LogTemp, Log, TEXT("%s"), *USIOJConvert::ToJsonString(Message));
+		//UE_LOG(LogTemp, Log, TEXT("console.log %s"), *USIOJConvert::ToJsonString(Message));
+		if (OnConsoleLog)
+		{
+			OnConsoleLog(USIOJConvert::ToJsonString(Message));
+		}
 	});
 	Socket->OnEvent(TEXT("mainScriptEnd"), [&](const FString& Event, const TSharedPtr<FJsonValue>& Message)
 	{
@@ -65,14 +70,10 @@ bool FNodeCmd::RunScript(const FString& ScriptRelativePath, int32 Port)
 	Socket->OnEvent(TEXT("childScriptEnd"), [&](const FString& Event, const TSharedPtr<FJsonValue>& Message)
 	{
 		const FString SafeChildPathMessage = USIOJConvert::ToJsonString(Message);
-		TFunction<void()> GTCallback = [this, SafeChildPathMessage]
+		if (OnChildScriptEnd)
 		{
-			if (OnChildScriptEnd)
-			{
-				OnChildScriptEnd(SafeChildPathMessage);
-			}
-		};
-		Async(EAsyncExecution::TaskGraph, GTCallback);
+			OnChildScriptEnd(SafeChildPathMessage);
+		}
 	});
 	Socket->OnEvent(TEXT("childScriptError"), [&](const FString& Event, const TSharedPtr<FJsonValue>& Message)
 	{
@@ -80,14 +81,10 @@ bool FNodeCmd::RunScript(const FString& ScriptRelativePath, int32 Port)
 		const FString SafePath = ScriptRelativePath;
 		const FString SafeErrorMessage = USIOJConvert::ToJsonString(Message);
 		
-		TFunction<void()> GTCallback = [this, SafePath, SafeErrorMessage]
+		if (OnScriptError)
 		{
-			if (OnScriptError)
-			{
-				OnScriptError(SafePath, SafeErrorMessage);
-			}
-		};
-		Async(EAsyncExecution::TaskGraph, GTCallback);
+			OnScriptError(SafePath, SafeErrorMessage);
+		}
 	});
 
 	//NB: a new script run means events would need to be rebound... todo: keep a list of events bound and auto-rebind
@@ -125,8 +122,6 @@ bool FNodeCmd::RunScript(const FString& ScriptRelativePath, int32 Port)
 
 		PROCESS_INFORMATION piProcInfo = CreateChildProcess(NodeExe, ScriptRelativePath);
 
-		Emit(TEXT("Got some data!"));
-
 		//ReadFromPipe();
 		while (bShouldRun)
 		{
@@ -158,6 +153,14 @@ bool FNodeCmd::RunScript(const FString& ScriptRelativePath, int32 Port)
 	return true;
 }
 
+void FNodeCmd::RunChildScript(const FString& ScriptRelativePath)
+{
+	if (bIsRunning)
+	{
+		Socket->Emit(TEXT("runChildScript"), ScriptRelativePath);
+	}
+}
+
 void FNodeCmd::Emit(const FString& Data)
 {
 	Socket->Emit(TEXT("stdin"), Data);
@@ -165,7 +168,7 @@ void FNodeCmd::Emit(const FString& Data)
 
 void FNodeCmd::StopScript()
 {
-	Socket->Emit(TEXT("quit"), TEXT("ForceStop"));
+	Socket->Emit(TEXT("stopMainScript"), TEXT("ForceStop"));
 	Socket->Disconnect();
 	bShouldRun = false;
 }

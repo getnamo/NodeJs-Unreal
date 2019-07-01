@@ -32,7 +32,9 @@ public:
 	~FNodeCmd();
 	
 	//Start a node.js script
-	bool RunScript(const FString& ScriptRelativePath, int32 Port = 3000);
+	bool RunMainScript(const FString& ScriptRelativePath, int32 Port = 3000);
+
+	void RunChildScript(const FString& ScriptRelativePath);
 
 	//Todo: add std-emit and on event binds for this pipe
 	void Emit(const FString& Data);
@@ -42,6 +44,7 @@ public:
 
 	bool IsScriptRunning();
 
+	TFunction<void(const FString& LogMsg)> OnConsoleLog;
 	TFunction<void(const FString& ScriptRelativePath)> OnMainScriptEnd;
 	TFunction<void(const FString& ScriptRelativePath)> OnChildScriptEnd;
 	TFunction<void(const FString& ScriptRelativePath, const FString& ScriptErrorMessage)> OnScriptError;
