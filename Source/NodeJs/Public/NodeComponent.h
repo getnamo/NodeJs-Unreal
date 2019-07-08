@@ -39,15 +39,17 @@ public:
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = NodeJsProperties)
 	bool bRunDefaultScriptOnBeginPlay;
 
-	//this should always be true
-	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = NodeJsProperties)
-	bool bRunMainScriptOnBeginPlay;
+	//This should always be true, removed from BP exposure
+	//UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = NodeJsProperties)
+	bool bStartMainScriptIfNeededOnBeginPlay;
 
+	//This will cleanup our main script thread whenever there are no listeners. May slow down quick map travels. Default off.
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = NodeJsProperties)
 	bool bStopMainScriptOnNoListeners;
 
+	//Relative to {project root}/Content/Scripts
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = NodeJsProperties)
-	FString DefaultScript;
+	FString DefaultScriptPath;
 
 	//we only allow one script per component
 	UPROPERTY(BlueprintReadOnly, Category = NodeJsProperties)
@@ -61,6 +63,7 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "NodeJs Functions")
 	void RunScript(const FString& ScriptRelativePath);
 
+	/** forcibly stop the script */
 	UFUNCTION(BlueprintCallable, Category = "NodeJs Functions")
 	void StopScript();
 

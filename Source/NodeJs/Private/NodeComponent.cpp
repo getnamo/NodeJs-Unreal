@@ -8,10 +8,10 @@ UNodeComponent::UNodeComponent()
 {
 	PrimaryComponentTick.bCanEverTick = false;
 
-	bRunMainScriptOnBeginPlay = true;
-	bRunDefaultScriptOnBeginPlay = false;
+	bStartMainScriptIfNeededOnBeginPlay = true;
+	bRunDefaultScriptOnBeginPlay = true;
 	bStopMainScriptOnNoListeners = false;
-	DefaultScript = TEXT("child.js");
+	DefaultScriptPath = TEXT("child.js");
 	bScriptIsRunning = false;
 	ScriptId = -1;
 
@@ -25,13 +25,13 @@ void UNodeComponent::BeginPlay()
 {
 	Super::BeginPlay();
 
-	if (bRunMainScriptOnBeginPlay)
+	if (bStartMainScriptIfNeededOnBeginPlay)
 	{
 		//Start the parent script which hosts all scripts
 		LinkAndStartWrapperScript();
 		if (bRunDefaultScriptOnBeginPlay)
 		{
-			RunScript(DefaultScript);
+			RunScript(DefaultScriptPath);
 		}
 	}
 }
@@ -45,7 +45,7 @@ void UNodeComponent::EndPlay(const EEndPlayReason::Type EndPlayReason)
 		Cmd->StopChildScript(ScriptId);
 
 		//we won't receive the network signal in time so call the stop script event manually
-		Listener->OnChildScriptEnd(DefaultScript);
+		Listener->OnChildScriptEnd(DefaultScriptPath);
 	}
 
 	Cmd->RemoveEventListener(Listener);
@@ -77,7 +77,7 @@ void UNodeComponent::LinkAndStartWrapperScript()
 
 void UNodeComponent::RunScript(const FString& ScriptRelativePath)
 {
-	DefaultScript = ScriptRelativePath;
+	DefaultScriptPath = ScriptRelativePath;
 
 	if (!bScriptIsRunning) 
 	{
