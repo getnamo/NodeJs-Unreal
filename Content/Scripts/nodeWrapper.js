@@ -47,7 +47,10 @@ const gracefulExit = (socket)=>{
 	}, 100);
 }
 
-let procId = 1;
+//convenience log wrapper
+const emitLog = (socket, msg)=>{
+	socket.emit(logEvent, msg);
+}
 
 const startScript = (scriptName, socket, scriptPath)=>{	
 	//default path is home path
@@ -99,7 +102,7 @@ const startScript = (scriptName, socket, scriptPath)=>{
 	child.stdout.setEncoding('utf8');
 	child.stdout.on('data', (msg)=>{
 		let finalMsg = msg.toString().trim();
-		console.log(finalMsg);
+		emitLog(socket, finalMsg);
 	});
 
 	child.on('exit', (code, signal) =>{
@@ -127,8 +130,6 @@ const startScript = (scriptName, socket, scriptPath)=>{
 	let result = {};
 	result.ipc = ipc;
 	result.child = child;
-	result.id = procId;
-	procId++;
 
 	return result;
 }
@@ -138,64 +139,79 @@ const startScript = (scriptName, socket, scriptPath)=>{
 io.on('connection', (socket)=>{
 	//re-direct console.log to our socket.io pipe
 	console.log = (msg) =>{
-		io.emit(logEvent, msg);
+		emitLog(socket, msg);
 	}
 
 	//we scope our connection info so we can route it correctly
 	let ipc = null;
 	let child = null;
 
-	/*todo: bind log to socket - log = (msg, socket) =>{
-		socket.emit(logEvent, msg);
-	}*/
+	let childProcesses = {};
 
 	//Middleware catch all events so we can forward them to our IPCs
 	socket.use((packet, next) => {
-    	//socket.emit(logEvent, packet);
-    	//socket.emit(logEvent, 'Is ipc valid? ' + (ipc != null));
+		//socket.emit(logEvent, packet);
+		//socket.emit(logEvent, 'Is ipc valid? ' + (ipc != null));
 
-    	//do we have a valid child running?
-    	if(ipc && ipc.isRunning){
-    		let eventName = packet[0];
-    		let args = packet[1];
-    		if(packet.length>1){
-    			ipc.emit(eventName, args);
-    		}
-    		else{
-    			ipc.emit(eventName);
-    		}
-    	}
+		//do we have a valid child running?
+		for(let idx in childProcesses){
+			const ipc = childProcesses[idx].ipc;
+			//todo: filter ipc forward by process id in received event
+			if(ipc && ipc.isRunning){
+				let eventName = packet[0];
+				let args = packet[1];
+				if(packet.length>1){
+					ipc.emit(eventName, args);
+				}
+				else{
+					ipc.emit(eventName);
+				}
+			}
+		}
 
-    	next();
+		next();
 	});
 
-	socket.emit(logEvent, 'Connected as ' + socket.id);
+	emitLog(socket, 'Connected as ' + socket.id);
 
 	socket.on(runChildScript, (scriptName, startCallback)=>{
 		//Start the specified script
-		processInfo = startScript(scriptName, socket, defaultScriptPath);
-		ipc = processInfo.ipc;
-		child = processInfo.child;
+		try{
+			let processInfo = startScript(scriptName, socket, defaultScriptPath);
+		
+			//store our child processes in hashlist
+			childProcesses[processInfo.child.pid] = processInfo;
 
-		if(startCallback){
-			//callback with id for muxing emits from unreal side
-			startCallback(Number(child.pid));
+			if(startCallback){
+				//callback with id for muxing emits from unreal side
+				startCallback(Number(processInfo.child.pid));
+			}
+
+			emitLog(socket, 'started script: ' + scriptName);
 		}
-
-		console.log('started script: ' + scriptName);
+		catch(e){
+			emitLog(socket, 'script start Error: ' + util.inspect(e));
+		}
 	});
 
 	socket.on(stopMainScript, (stopType)=>{
-		console.log('Stopping main script due to ' + stopType);
+		emitLog(socket, 'Stopping main script due to ' + stopType);
 		gracefulExit();
 	});
 
-	socket.on(stopChildScript, ()=>{
-		if(child && ipc){
-			ipc.emit('kill');
-			setTimeout(()=>{
-				child.disconnect();
-			},100);
+	socket.on(stopChildScript, (processId)=>{
+		try{
+			const processInfo = childProcesses[processId];
+			if(processInfo && processInfo.ipc && processInfo.child){
+				processInfo.ipc.emit('kill');
+				setTimeout(()=>{
+					processInfo.child.disconnect();
+					emitLog(socket, 'stopped script: ' + processId);
+				},100);
+			}
+		}
+		catch(e){
+			emitLog(socket, 'stop script error: ' + util.inspect(e));
 		}
 	});
 });

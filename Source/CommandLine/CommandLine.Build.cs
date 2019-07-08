@@ -30,7 +30,8 @@ public class CommandLine : ModuleRules
 				"SocketIOClient",
 				"SocketIOLib",
 				"Json",
-				"SIOJson"
+				"SIOJson",
+				"CoreUtility"
 				// ... add other public dependencies that you statically link with here ...
 			}
 			);

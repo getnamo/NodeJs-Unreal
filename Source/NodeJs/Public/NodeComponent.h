@@ -44,11 +44,18 @@ public:
 	bool bRunMainScriptOnBeginPlay;
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = NodeJsProperties)
+	bool bStopMainScriptOnNoListeners;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = NodeJsProperties)
 	FString DefaultScript;
 
 	//we only allow one script per component
 	UPROPERTY(BlueprintReadOnly, Category = NodeJsProperties)
 	bool bScriptIsRunning;
+
+	//-1 if invalid
+	UPROPERTY(BlueprintReadOnly, Category = NodeJsProperties)
+	int32 ScriptId;
 
 	/** Run your scripts here */
 	UFUNCTION(BlueprintCallable, Category = "NodeJs Functions")
@@ -98,7 +105,7 @@ public:
 
 
 protected:
-	void RunWrapperScript();
+	void LinkAndStartWrapperScript();
 
 	virtual void BeginPlay() override;
 
@@ -108,4 +115,5 @@ protected:
 
 private:
 	TSharedPtr<FNodeCmd> Cmd;
+	TSharedPtr<FNodeEventListener> Listener;
 };

@@ -15,6 +15,8 @@ public:
 
 	virtual TSharedPtr<FNodeCmd> NewValidNativePointer() override;
 	virtual void ReleaseNativePointer(TSharedPtr<FNodeCmd> PointerToRelease) override;
+	virtual TSharedPtr<FNodeCmd> ValidSharedNativePointer(FString SharedId) override;
+
 
 	/** IModuleInterface implementation */
 	virtual void StartupModule() override;
@@ -22,6 +24,11 @@ public:
 
 private:
 	TArray<TSharedPtr<FNodeCmd>> PluginNativePointers;
+
+	//Shared pointers, these will typically be alive past game world lifecycles
+	TMap<FString, TSharedPtr<FNodeCmd>> SharedNativePointers;
+	TSet<TSharedPtr<FNodeCmd>> AllSharedPtrs;	//reverse lookup
+
 	FThreadSafeBool bHasActiveNativePointers;
 	FCriticalSection DeleteSection;
 };
@@ -36,6 +43,20 @@ TSharedPtr<FNodeCmd> FNodeJsModule::NewValidNativePointer()
 
 void FNodeJsModule::ReleaseNativePointer(TSharedPtr<FNodeCmd> PointerToRelease)
 {
+	//Remove shared ptr references if any
+	if (AllSharedPtrs.Contains(PointerToRelease))
+	{
+		AllSharedPtrs.Remove(PointerToRelease);
+		for (auto& Pair : SharedNativePointers)
+		{
+			if (Pair.Value == PointerToRelease)
+			{
+				SharedNativePointers.Remove(Pair.Key);
+				break;
+			}
+		}
+	}
+
 	FLambdaRunnable::RunLambdaOnBackGroundThreadPool([PointerToRelease, this]
 	{
 		if (PointerToRelease.IsValid())
@@ -63,6 +84,23 @@ void FNodeJsModule::ReleaseNativePointer(TSharedPtr<FNodeCmd> PointerToRelease)
 			bHasActiveNativePointers = PluginNativePointers.Num() > 0;
 		}
 	});
+}
+
+TSharedPtr<FNodeCmd> FNodeJsModule::ValidSharedNativePointer(FString SharedId)
+{
+	//Found key? return it
+	if (SharedNativePointers.Contains(SharedId))
+	{
+		return SharedNativePointers[SharedId];
+	}
+	//Otherwise request a new id and return it
+	else
+	{
+		TSharedPtr<FNodeCmd> NewNativePtr = NewValidNativePointer();
+		SharedNativePointers.Add(SharedId, NewNativePtr);
+		AllSharedPtrs.Add(NewNativePtr);
+		return NewNativePtr;
+	}
 }
 
 void FNodeJsModule::StartupModule()

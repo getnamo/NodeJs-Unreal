@@ -10,10 +10,13 @@ UNodeComponent::UNodeComponent()
 
 	bRunMainScriptOnBeginPlay = true;
 	bRunDefaultScriptOnBeginPlay = false;
+	bStopMainScriptOnNoListeners = true;
 	DefaultScript = TEXT("child.js");
 	bScriptIsRunning = false;
+	ScriptId = -1;
 
-	Cmd = INodeJsModule::Get().NewValidNativePointer();
+	Cmd = INodeJsModule::Get().ValidSharedNativePointer(TEXT("main"));
+	Listener = MakeShareable(new FNodeEventListener());
 }
 
 
@@ -25,7 +28,7 @@ void UNodeComponent::BeginPlay()
 	if (bRunMainScriptOnBeginPlay)
 	{
 		//Start the parent script which hosts all scripts
-		RunWrapperScript();
+		LinkAndStartWrapperScript();
 		if (bRunDefaultScriptOnBeginPlay)
 		{
 			RunScript(DefaultScript);
@@ -36,33 +39,39 @@ void UNodeComponent::BeginPlay()
 
 void UNodeComponent::EndPlay(const EEndPlayReason::Type EndPlayReason)
 {
-	/*if (Cmd->IsMainScriptRunning())
+	if (bScriptIsRunning)
 	{
-		//Cmd->StopMainScript();
-	}*/
-	INodeJsModule::Get().ReleaseNativePointer(Cmd);
+		Cmd->StopChildScript(ScriptId);
+	}
+	Cmd->bShouldStopMainScriptOnNoListeners = bStopMainScriptOnNoListeners;
+	Cmd->RemoveEventListener(Listener.Get());
+
+	//it gets released on plugin exit
+	//INodeJsModule::Get().ReleaseNativePointer(Cmd);
 }
 
-void UNodeComponent::RunWrapperScript()
+void UNodeComponent::LinkAndStartWrapperScript()
 {
-	Cmd->OnChildScriptEnd = [this](const FString& ScriptEndedPath)
+	Listener->OnChildScriptEnd = [this](const FString& ScriptEndedPath)
 	{
 		OnScriptEnd.Broadcast(ScriptEndedPath);
 		bScriptIsRunning = false;
 	};
-	Cmd->OnScriptError = [this](const FString& ScriptPath, const FString& ErrorMessage)
+	Listener->OnScriptError = [this](const FString& ScriptPath, const FString& ErrorMessage)
 	{
 		OnScriptError.Broadcast(ScriptPath, ErrorMessage);
 	};
-	Cmd->OnConsoleLog = [this](const FString& ConsoleMessage) 
+	Listener->OnConsoleLog = [this](const FString& ConsoleMessage)
 	{
 		OnConsoleLog.Broadcast(ConsoleMessage);
 	};
-	Cmd->OnChildScriptBegin = [this](int32 ProcessId)
+	Listener->OnChildScriptBegin = [this](int32 ProcessId)
 	{
+		ScriptId = ProcessId;
 		OnScriptBegin.Broadcast(ProcessId);
 	};
-	Cmd->StartupMainScriptIfNeeded();
+
+	Cmd->AddEventListener(Listener.Get());
 }
 
 void UNodeComponent::RunScript(const FString& ScriptRelativePath)
@@ -80,7 +89,7 @@ void UNodeComponent::RunScript(const FString& ScriptRelativePath)
 
 void UNodeComponent::StopScript()
 {
-	Cmd->StopChildScript();
+	Cmd->StopChildScript(ScriptId);
 }
 
 void UNodeComponent::Emit(const FString& EventName, USIOJsonValue* Message /*= nullptr*/, const FString& Namespace /*= FString(TEXT("/"))*/)

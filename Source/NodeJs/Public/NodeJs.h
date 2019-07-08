@@ -33,5 +33,6 @@ public:
 
 	//Plugin scoped memory management
 	virtual TSharedPtr<FNodeCmd> NewValidNativePointer() { return nullptr; };
+	virtual TSharedPtr<FNodeCmd> ValidSharedNativePointer(FString SharedId) { return nullptr; };
 	virtual void ReleaseNativePointer(TSharedPtr<FNodeCmd> PointerToRelease) {};
 };

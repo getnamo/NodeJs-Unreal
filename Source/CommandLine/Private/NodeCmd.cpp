@@ -19,6 +19,7 @@
 #include "PostWindowsApi.h"
 //End Windows
 
+#include "LambdaRunnable.h"
 
 #define BUFSIZE 4096
 
@@ -37,28 +38,20 @@ FNodeCmd::FNodeCmd()
 	bShouldMainRun = true;
 	ProcessDirectory = FPaths::ConvertRelativePathToFull(FPaths::ProjectDir() + "Plugins/nodejs-ue4/Source/ThirdParty/node");
 	PluginContentRelativePath = TEXT("../../../Content/Scripts/");
-	OnMainScriptEnd = nullptr;
-	OnChildScriptEnd = nullptr;
-	OnScriptError = nullptr;
-	OnConsoleLog = nullptr;
 	Socket = MakeShareable(new FSocketIONative);
+	bShouldStopMainScriptOnNoListeners = false;
 }
 
 FNodeCmd::~FNodeCmd()
 {
 	//todo: convert to listener & static alloc
-	bShouldMainRun = false;
+	StopMainScriptSync();
 
 	//block until the other thread quits
-	/*while (bIsMainRunning)
+	while (bIsMainRunning)
 	{
 
 	}
-
-	Socket->Disconnect();*/
-
-	//todo: socket and main script is only ever 1 instance, everything connects to same socket
-	//
 }
 
 void FNodeCmd::StartupMainScriptIfNeeded()
@@ -66,6 +59,33 @@ void FNodeCmd::StartupMainScriptIfNeeded()
 	if (!bIsMainRunning) 
 	{
 		RunMainScript(PluginContentRelativePath + DefaultMainScript, DefaultPort);
+	}
+}
+
+void FNodeCmd::StopMainScriptSync()
+{
+	if (Socket->bIsConnected)
+	{
+		Socket->Emit(TEXT("stopMainScript"), TEXT("ForceStop"));
+		Socket->SyncDisconnect();
+	}
+	bShouldMainRun = false;
+}
+
+void FNodeCmd::AddEventListener(FNodeEventListener* Listener)
+{
+	Listeners.AddUnique(Listener);
+	StartupMainScriptIfNeeded();
+}
+
+void FNodeCmd::RemoveEventListener(FNodeEventListener* Listener)
+{
+	Listeners.Remove(Listener);
+	
+	//removed last listener? stop main script
+	if (bShouldStopMainScriptOnNoListeners && Listeners.Num() == 0)
+	{
+		StopMainScript();
 	}
 }
 
@@ -88,12 +108,21 @@ bool FNodeCmd::RunMainScript(FString ScriptRelativePath, int32 Port)
 	{
 		UE_LOG(LogTemp, Log, TEXT("Main script Connected."));
 	};
+	Socket->OnReconnectionCallback = [&](uint32 AttemptCount, uint32 DelayInMs) 
+	{
+		UE_LOG(LogTemp, Error, TEXT("Main script connection error! Likely crash, stopping main script."));
+		Socket->Disconnect();
+		bShouldMainRun = false;
+	};
 	Socket->OnEvent(TEXT("console.log"), [&](const FString& Event, const TSharedPtr<FJsonValue>& Message)
 	{
 		//UE_LOG(LogTemp, Log, TEXT("console.log %s"), *USIOJConvert::ToJsonString(Message));
-		if (OnConsoleLog)
+		for (auto Listener : Listeners)
 		{
-			OnConsoleLog(USIOJConvert::ToJsonString(Message));
+			if (Listener->OnConsoleLog)
+			{
+				Listener->OnConsoleLog(USIOJConvert::ToJsonString(Message));
+			}
 		}
 	});
 	Socket->OnEvent(TEXT("mainScriptEnd"), [&](const FString& Event, const TSharedPtr<FJsonValue>& Message)
@@ -105,9 +134,12 @@ bool FNodeCmd::RunMainScript(FString ScriptRelativePath, int32 Port)
 	Socket->OnEvent(TEXT("childScriptEnd"), [&](const FString& Event, const TSharedPtr<FJsonValue>& Message)
 	{
 		const FString SafeChildPathMessage = USIOJConvert::ToJsonString(Message);
-		if (OnChildScriptEnd)
+		for (auto Listener : Listeners)
 		{
-			OnChildScriptEnd(SafeChildPathMessage);
+			if (Listener->OnChildScriptEnd)
+			{
+				Listener->OnChildScriptEnd(SafeChildPathMessage);
+			}
 		}
 	});
 	Socket->OnEvent(TEXT("childScriptError"), [&, ScriptRelativePath](const FString& Event, const TSharedPtr<FJsonValue>& Message)
@@ -116,16 +148,18 @@ bool FNodeCmd::RunMainScript(FString ScriptRelativePath, int32 Port)
 		const FString SafePath = ScriptRelativePath;
 		const FString SafeErrorMessage = USIOJConvert::ToJsonString(Message);
 		
-		if (OnScriptError)
+		for (auto Listener : Listeners)
 		{
-			OnScriptError(SafePath, SafeErrorMessage);
+			if (Listener->OnScriptError)
+			{
+				Listener->OnScriptError(SafePath, SafeErrorMessage);
+			}
 		}
 	});
 
 	Socket->Connect(FString::Printf(TEXT("http://localhost:%d"), Port));
 
-
-	TFunction<void()> Task = [&, ScriptRelativePath]
+	FLambdaRunnable::RunLambdaOnBackGroundThread([&, ScriptRelativePath]
 	{
 		UE_LOG(LogTemp, Log, TEXT("node thread start"));
 		bIsMainRunning = true;
@@ -170,31 +204,38 @@ bool FNodeCmd::RunMainScript(FString ScriptRelativePath, int32 Port)
 		UE_LOG(LogTemp, Log, TEXT("RunScriptTerminated"));
 		const FString FinishPath = ScriptRelativePath;
 
-		TFunction<void()> GTCallback = [this, FinishPath]
+		FLambdaRunnable::RunShortLambdaOnGameThread([this, FinishPath] 
 		{
 			bIsMainRunning = false;
-			if (OnMainScriptEnd)
+			for (auto Listener : Listeners)
 			{
-				OnMainScriptEnd(FinishPath);
+				if (Listener->OnMainScriptEnd)
+				{
+					Listener->OnMainScriptEnd(FinishPath);
+				}
 			}
-		};
-		Async(EAsyncExecution::TaskGraph, GTCallback);
-	};
-
-	Async(EAsyncExecution::Thread, Task);
+		});
+	});
 
 	return true;
 }
 
 void FNodeCmd::RunChildScript(const FString& ScriptRelativePath)
 {
+	//StartupMainScriptIfNeeded();
+
 	if (bIsMainRunning)
 	{
 		Socket->Emit(TEXT("runChildScript"), ScriptRelativePath, [this](const TArray<TSharedPtr<FJsonValue>>& ResponseArray){
-			ProcessId = ResponseArray[0]->AsNumber();
-			if (OnChildScriptBegin)
+			int32 ProcessId = ResponseArray[0]->AsNumber();
+			RunningChildScripts.Add(ProcessId);
+
+			for (auto Listener : Listeners) 
 			{
-				OnChildScriptBegin(ProcessId);
+				if (Listener->OnChildScriptBegin)
+				{
+					Listener->OnChildScriptBegin(ProcessId);
+				}
 			}
 		});
 	}
@@ -202,16 +243,25 @@ void FNodeCmd::RunChildScript(const FString& ScriptRelativePath)
 
 void FNodeCmd::StopMainScript()
 {
-	Socket->Emit(TEXT("stopMainScript"), TEXT("ForceStop"));
-	Socket->SyncDisconnect();
-	bShouldMainRun = false;
+	if (bIsMainRunning)
+	{
+		FLambdaRunnable::RunLambdaOnBackGroundThreadPool([this]
+		{
+			if (Socket->bIsConnected) 
+			{
+				Socket->Emit(TEXT("stopMainScript"), TEXT("ForceStop"));
+				Socket->SyncDisconnect();
+			}
+			bShouldMainRun = false;
+		});
+	}
 }
 
-void FNodeCmd::StopChildScript()
+void FNodeCmd::StopChildScript(int32 ProcessId)
 {
-	if (bIsMainRunning) 
+	if (bIsMainRunning && Socket->bIsConnected)
 	{
-		Socket->Emit(TEXT("stopChildScript"), TEXT("ForceStop"));
+		Socket->Emit(TEXT("stopChildScript"), (double)ProcessId);
 	}
 }
 
