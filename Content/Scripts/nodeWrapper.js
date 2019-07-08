@@ -202,18 +202,34 @@ io.on('connection', (socket)=>{
 	socket.on(stopChildScript, (processId)=>{
 		try{
 			const processInfo = childProcesses[processId];
-			if(processInfo && processInfo.ipc && processInfo.child){
+			if(	processInfo &&
+			 	processInfo.ipc &&
+			 	processInfo.child &&
+			 	processInfo.child.connected){
+
+				//console.log(util.inspect(processInfo));
+
 				processInfo.ipc.emit('kill');
 				setTimeout(()=>{
-					processInfo.child.disconnect();
-					emitLog(socket, 'stopped script: ' + processId);
-					socket.emit(childScriptEnd, processId);
+					try{
+						processInfo.child.disconnect();
+						emitLog(socket, 'stopped script: ' + processId);
+						delete childProcesses[processId];
+						socket.emit(childScriptEnd, processId);
+					}
+					catch(e){
+						emitLog(socket, 'script disconnect error: ' + util.inspect(e));
+					}
 				},100);
+			}
+			else{
+				emitLog(socket, 'process no longer valid for termination.');
 			}
 		}
 		catch(e){
 			emitLog(socket, 'stop script error: ' + util.inspect(e));
 		}
+		
 	});
 });
 

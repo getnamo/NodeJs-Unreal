@@ -10,7 +10,7 @@ UNodeComponent::UNodeComponent()
 
 	bRunMainScriptOnBeginPlay = true;
 	bRunDefaultScriptOnBeginPlay = false;
-	bStopMainScriptOnNoListeners = true;
+	bStopMainScriptOnNoListeners = false;
 	DefaultScript = TEXT("child.js");
 	bScriptIsRunning = false;
 	ScriptId = -1;
@@ -43,15 +43,7 @@ void UNodeComponent::EndPlay(const EEndPlayReason::Type EndPlayReason)
 	if (bScriptIsRunning)
 	{
 		Cmd->StopChildScript(ScriptId);
-		//remove listener when child script ended
-		bAwaitingChildScriptEnd = true;
 	}
-	
-	//another thread will release this hold, todo add infinity exit barrier
-	/*while (bAwaitingChildScriptEnd)
-	{
-
-	}*/
 
 	Cmd->RemoveEventListener(Listener);
 }
