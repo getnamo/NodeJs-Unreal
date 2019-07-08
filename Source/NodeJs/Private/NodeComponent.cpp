@@ -1,5 +1,6 @@
 
 #include "NodeComponent.h"
+#include "NodeJs.h"
 #include "SIOMessageConvert.h"
 
 // Sets default values for this component's properties
@@ -12,7 +13,7 @@ UNodeComponent::UNodeComponent()
 	DefaultScript = TEXT("child.js");
 	bScriptIsRunning = false;
 
-	Cmd = MakeShareable(new FNodeCmd);
+	Cmd = INodeJsModule::Get().NewValidNativePointer();
 }
 
 
@@ -35,10 +36,11 @@ void UNodeComponent::BeginPlay()
 
 void UNodeComponent::EndPlay(const EEndPlayReason::Type EndPlayReason)
 {
-	if (Cmd->IsMainScriptRunning())
+	/*if (Cmd->IsMainScriptRunning())
 	{
-		Cmd->StopMainScript();
-	}
+		//Cmd->StopMainScript();
+	}*/
+	INodeJsModule::Get().ReleaseNativePointer(Cmd);
 }
 
 void UNodeComponent::RunWrapperScript()

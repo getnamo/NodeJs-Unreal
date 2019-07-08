@@ -43,13 +43,21 @@ void FNodeJsModule::ReleaseNativePointer(TSharedPtr<FNodeCmd> PointerToRelease)
 			//Ensure only one thread at a time removes from array 
 			{
 				FScopeLock Lock(&DeleteSection);
+				if (PointerToRelease->IsMainScriptRunning())
+				{
+					PointerToRelease->StopMainScript();
+				}
 				PluginNativePointers.Remove(PointerToRelease);
 			}
+			while (PointerToRelease->IsMainScriptRunning())
+			{
+				FPlatformProcess::Sleep(0.01f);
+			}
 			//Disconnect, this can happen simultaneously
-			if (PointerToRelease->Socket && PointerToRelease->Socket->bIsConnected)
+			/*if (PointerToRelease->Socket && PointerToRelease->Socket->bIsConnected)
 			{
 				PointerToRelease->Socket->SyncDisconnect();
-			}
+			}*/
 
 			//Update our active status
 			bHasActiveNativePointers = PluginNativePointers.Num() > 0;
@@ -72,10 +80,11 @@ void FNodeJsModule::ShutdownModule()
 	AllActivePointers.Empty();
 
 	float Elapsed = 0.f;
+	float SleepInc = 0.01f;
 	while (bHasActiveNativePointers)
 	{
-		FPlatformProcess::Sleep(0.01f);
-		Elapsed += 0.01f;
+		FPlatformProcess::Sleep(SleepInc);
+		Elapsed += SleepInc;
 
 		//if it takes more than 5 seconds, just quit
 		if (Elapsed > 5.f)

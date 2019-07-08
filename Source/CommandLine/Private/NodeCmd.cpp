@@ -50,12 +50,15 @@ FNodeCmd::~FNodeCmd()
 	bShouldMainRun = false;
 
 	//block until the other thread quits
-	while (bIsMainRunning)
+	/*while (bIsMainRunning)
 	{
 
 	}
 
-	Socket->Disconnect();
+	Socket->Disconnect();*/
+
+	//todo: socket and main script is only ever 1 instance, everything connects to same socket
+	//
 }
 
 void FNodeCmd::StartupMainScriptIfNeeded()
@@ -159,7 +162,7 @@ bool FNodeCmd::RunMainScript(FString ScriptRelativePath, int32 Port)
 		}
 		if (Socket->bIsConnected) 
 		{
-
+			//Socket->Disconnect();
 		}
 
 		TerminateProcess(piProcInfo.hProcess, 1);
@@ -200,7 +203,7 @@ void FNodeCmd::RunChildScript(const FString& ScriptRelativePath)
 void FNodeCmd::StopMainScript()
 {
 	Socket->Emit(TEXT("stopMainScript"), TEXT("ForceStop"));
-	Socket->Disconnect();
+	Socket->SyncDisconnect();
 	bShouldMainRun = false;
 }
 
