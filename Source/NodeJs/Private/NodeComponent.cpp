@@ -7,9 +7,10 @@
 UNodeComponent::UNodeComponent()
 {
 	PrimaryComponentTick.bCanEverTick = false;
-
 	bStartMainScriptIfNeededOnBeginPlay = true;
+
 	bRunDefaultScriptOnBeginPlay = true;
+	bReloadOnChange = true;
 	bStopMainScriptOnNoListeners = false;
 	DefaultScriptPath = TEXT("child.js");
 	bScriptIsRunning = false;

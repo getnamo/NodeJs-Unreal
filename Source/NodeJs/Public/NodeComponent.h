@@ -39,6 +39,10 @@ public:
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = NodeJsProperties)
 	bool bRunDefaultScriptOnBeginPlay;
 
+	//not yet implemented
+	//UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = NodeJsProperties)
+	bool bReloadOnChange;
+
 	//This should always be true, removed from BP exposure
 	//UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = NodeJsProperties)
 	bool bStartMainScriptIfNeededOnBeginPlay;
