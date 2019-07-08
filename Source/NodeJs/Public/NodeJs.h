@@ -4,15 +4,14 @@
 
 #include "Modules/ModuleManager.h"
 
-class FNodeJsModule : public IModuleInterface
+class FNodeCmd;
+
+class INodeJsModule : public IModuleInterface
 {
 public:
 
-	/** IModuleInterface implementation */
-	virtual void StartupModule() override;
-	virtual void ShutdownModule() override;
-
 private:
-	/** Handle to the test dll we will load */
-	void*	ExampleLibraryHandle;
+
+	virtual TSharedPtr<FNodeCmd> NewValidNativePointer() { return nullptr; };
+	virtual void ReleaseNativePointer(TSharedPtr<FNodeCmd> PointerToRelease) {};
 };

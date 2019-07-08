@@ -30,7 +30,8 @@ public class NodeJs : ModuleRules
 				"CommandLine",
 				"SocketIOClient",
 				"SIOJson",
-				"Json"
+				"Json",
+				"CoreUtility"
 				// ... add other public dependencies that you statically link with here ...
 			}
 			);
