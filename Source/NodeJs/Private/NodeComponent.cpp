@@ -43,6 +43,9 @@ void UNodeComponent::EndPlay(const EEndPlayReason::Type EndPlayReason)
 	if (bScriptIsRunning)
 	{
 		Cmd->StopChildScript(ScriptId);
+
+		//we won't receive the network signal in time so call the stop script event manually
+		Listener->OnChildScriptEnd(DefaultScript);
 	}
 
 	Cmd->RemoveEventListener(Listener);
@@ -54,11 +57,6 @@ void UNodeComponent::LinkAndStartWrapperScript()
 	{
 		OnScriptEnd.Broadcast(ScriptEndedPath);
 		bScriptIsRunning = false;
-
-		if (bAwaitingChildScriptEnd)
-		{
-			bAwaitingChildScriptEnd = false;
-		}
 	};
 	Listener->OnScriptError = [this](const FString& ScriptPath, const FString& ErrorMessage)
 	{
@@ -79,6 +77,8 @@ void UNodeComponent::LinkAndStartWrapperScript()
 
 void UNodeComponent::RunScript(const FString& ScriptRelativePath)
 {
+	DefaultScript = ScriptRelativePath;
+
 	if (!bScriptIsRunning) 
 	{
 		Cmd->RunChildScript(ScriptRelativePath);
