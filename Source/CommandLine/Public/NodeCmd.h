@@ -40,8 +40,8 @@ public:
 	bool IsMainScriptRunning();
 
 	//listening to events node.js
-	void AddEventListener(FNodeEventListener* Listener);
-	void RemoveEventListener(FNodeEventListener* Listener);
+	void AddEventListener(TSharedPtr<FNodeEventListener> Listener);
+	void RemoveEventListener(TSharedPtr<FNodeEventListener> Listener);
 
 	TSharedPtr<FSocketIONative> Socket;
 
@@ -56,7 +56,7 @@ private:
 	//start wrapper script
 	bool RunMainScript(FString ScriptRelativePath, int32 Port = 3000);
 
-	TArray<FNodeEventListener*> Listeners;
+	TArray<TSharedPtr<FNodeEventListener>> Listeners;
 	TArray<int32>RunningChildScripts;
 
 	FString ProcessDirectory;

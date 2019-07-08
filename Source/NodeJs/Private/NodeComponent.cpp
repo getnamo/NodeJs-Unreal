@@ -39,15 +39,21 @@ void UNodeComponent::BeginPlay()
 
 void UNodeComponent::EndPlay(const EEndPlayReason::Type EndPlayReason)
 {
+	Cmd->bShouldStopMainScriptOnNoListeners = bStopMainScriptOnNoListeners;
 	if (bScriptIsRunning)
 	{
 		Cmd->StopChildScript(ScriptId);
+		//remove listener when child script ended
+		bAwaitingChildScriptEnd = true;
 	}
-	Cmd->bShouldStopMainScriptOnNoListeners = bStopMainScriptOnNoListeners;
-	Cmd->RemoveEventListener(Listener.Get());
+	
+	//another thread will release this hold, todo add infinity exit barrier
+	/*while (bAwaitingChildScriptEnd)
+	{
 
-	//it gets released on plugin exit
-	//INodeJsModule::Get().ReleaseNativePointer(Cmd);
+	}*/
+
+	Cmd->RemoveEventListener(Listener);
 }
 
 void UNodeComponent::LinkAndStartWrapperScript()
@@ -56,6 +62,11 @@ void UNodeComponent::LinkAndStartWrapperScript()
 	{
 		OnScriptEnd.Broadcast(ScriptEndedPath);
 		bScriptIsRunning = false;
+
+		if (bAwaitingChildScriptEnd)
+		{
+			bAwaitingChildScriptEnd = false;
+		}
 	};
 	Listener->OnScriptError = [this](const FString& ScriptPath, const FString& ErrorMessage)
 	{
@@ -71,7 +82,7 @@ void UNodeComponent::LinkAndStartWrapperScript()
 		OnScriptBegin.Broadcast(ProcessId);
 	};
 
-	Cmd->AddEventListener(Listener.Get());
+	Cmd->AddEventListener(Listener);
 }
 
 void UNodeComponent::RunScript(const FString& ScriptRelativePath)

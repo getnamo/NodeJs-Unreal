@@ -72,13 +72,13 @@ void FNodeCmd::StopMainScriptSync()
 	bShouldMainRun = false;
 }
 
-void FNodeCmd::AddEventListener(FNodeEventListener* Listener)
+void FNodeCmd::AddEventListener(TSharedPtr<FNodeEventListener> Listener)
 {
 	Listeners.AddUnique(Listener);
 	StartupMainScriptIfNeeded();
 }
 
-void FNodeCmd::RemoveEventListener(FNodeEventListener* Listener)
+void FNodeCmd::RemoveEventListener(TSharedPtr<FNodeEventListener> Listener)
 {
 	Listeners.Remove(Listener);
 	
@@ -111,7 +111,6 @@ bool FNodeCmd::RunMainScript(FString ScriptRelativePath, int32 Port)
 	Socket->OnReconnectionCallback = [&](uint32 AttemptCount, uint32 DelayInMs) 
 	{
 		UE_LOG(LogTemp, Error, TEXT("Main script connection error! Likely crash, stopping main script."));
-		Socket->Disconnect();
 		bShouldMainRun = false;
 	};
 	Socket->OnEvent(TEXT("console.log"), [&](const FString& Event, const TSharedPtr<FJsonValue>& Message)
@@ -196,7 +195,7 @@ bool FNodeCmd::RunMainScript(FString ScriptRelativePath, int32 Port)
 		}
 		if (Socket->bIsConnected) 
 		{
-			//Socket->Disconnect();
+			Socket->SyncDisconnect();
 		}
 
 		TerminateProcess(piProcInfo.hProcess, 1);

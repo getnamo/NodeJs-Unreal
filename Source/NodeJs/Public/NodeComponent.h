@@ -112,8 +112,10 @@ protected:
 	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
 
 	bool CallBPFunctionWithResponse(UObject* Target, const FString& FunctionName, TArray<TSharedPtr<FJsonValue>> Response);
+	FThreadSafeBool bAwaitingChildScriptEnd;
 
 private:
 	TSharedPtr<FNodeCmd> Cmd;
 	TSharedPtr<FNodeEventListener> Listener;
+
 };

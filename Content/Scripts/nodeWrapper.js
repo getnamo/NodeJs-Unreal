@@ -207,6 +207,7 @@ io.on('connection', (socket)=>{
 				setTimeout(()=>{
 					processInfo.child.disconnect();
 					emitLog(socket, 'stopped script: ' + processId);
+					socket.emit(childScriptEnd, processId);
 				},100);
 			}
 		}
