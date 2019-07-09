@@ -9,18 +9,22 @@ class COMMANDLINE_API FNodeEventListener
 {
 public:
 	TFunction<void(const FString& LogMsg)> OnConsoleLog;
+	TFunction<void(const FString& LogMsg)> OnScriptConsoleLog;
 	TFunction<void(const FString& ScriptRelativePath)> OnMainScriptEnd;
 	TFunction<void(int32 ProcessId)> OnChildScriptBegin;
 	TFunction<void(const FString& ScriptRelativePath)> OnChildScriptEnd;
 	TFunction<void(const FString& ScriptRelativePath, const FString& ScriptErrorMessage)> OnScriptError;
+	int32 ProcessId;
 
 	FNodeEventListener() 
 	{
 		OnConsoleLog = nullptr;
+		OnScriptConsoleLog = nullptr;
 		OnMainScriptEnd = nullptr;
 		OnChildScriptBegin = nullptr;
 		OnChildScriptEnd = nullptr;
 		OnScriptError = nullptr;
+		ProcessId = -1;
 	}
 };
 

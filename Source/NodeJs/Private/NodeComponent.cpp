@@ -58,19 +58,30 @@ void UNodeComponent::LinkAndStartWrapperScript()
 	{
 		OnScriptEnd.Broadcast(ScriptEndedPath);
 		bScriptIsRunning = false;
+		UnbindAllScriptEvents();
+		Listener->ProcessId = -1;
+		ScriptId = -1;
 	};
 	Listener->OnScriptError = [this](const FString& ScriptPath, const FString& ErrorMessage)
 	{
 		OnScriptError.Broadcast(ScriptPath, ErrorMessage);
 	};
-	Listener->OnConsoleLog = [this](const FString& ConsoleMessage)
+	Listener->OnScriptConsoleLog = [this](const FString& ConsoleMessage)
 	{
 		OnConsoleLog.Broadcast(ConsoleMessage);
 	};
 	Listener->OnChildScriptBegin = [this](int32 ProcessId)
 	{
 		ScriptId = ProcessId;
+		Listener->ProcessId = ScriptId;
 		OnScriptBegin.Broadcast(ProcessId);
+		bScriptIsRunning = true;
+
+		//run any delayed binds due to process not running
+		for (auto& BindEventFunction : DelayedBindEvents)
+		{
+			BindEventFunction();
+		}
 	};
 
 	Cmd->AddEventListener(Listener);
@@ -83,7 +94,6 @@ void UNodeComponent::RunScript(const FString& ScriptRelativePath)
 	if (!bScriptIsRunning) 
 	{
 		Cmd->RunChildScript(ScriptRelativePath);
-		bScriptIsRunning = true;
 	}
 	else
 	{
@@ -109,7 +119,7 @@ void UNodeComponent::Emit(const FString& EventName, USIOJsonValue* Message /*= n
 		JsonMessage = MakeShareable(new FJsonValueNull);
 	}
 
-	Cmd->Socket->Emit(EventName, JsonMessage, nullptr, Namespace);
+	Cmd->Socket->Emit(FullEventName(EventName), JsonMessage, nullptr, Namespace);
 }
 
 void UNodeComponent::EmitWithCallBack(const FString& EventName, USIOJsonValue* Message /*= nullptr*/, const FString& CallbackFunctionName /*= FString("")*/, UObject* Target /*= nullptr*/, const FString& Namespace /*= FString(TEXT("/"))*/)
@@ -132,7 +142,7 @@ void UNodeComponent::EmitWithCallBack(const FString& EventName, USIOJsonValue* M
 			JsonMessage = MakeShareable(new FJsonValueNull);
 		}
 
-		Cmd->Socket->Emit(EventName, JsonMessage, [&, Target, CallbackFunctionName, this](const TArray<TSharedPtr<FJsonValue>>& Response)
+		Cmd->Socket->Emit(FullEventName(EventName), JsonMessage, [&, Target, CallbackFunctionName, this](const TArray<TSharedPtr<FJsonValue>>& Response)
 		{
 			CallBPFunctionWithResponse(Target, CallbackFunctionName, Response);
 		}, Namespace);
@@ -145,13 +155,29 @@ void UNodeComponent::EmitWithCallBack(const FString& EventName, USIOJsonValue* M
 
 void UNodeComponent::BindEvent(const FString& EventName, const FString& Namespace /*= FString(TEXT("/"))*/)
 {
-	Cmd->Socket->OnRawEvent(EventName, [&](const FString& Event, const sio::message::ptr& RawMessage) {
+	TFunction<void()> BindFunction = [EventName, Namespace, this]
+	{
+		//format: pid@EventName, needs to be assessed when we have a process/script id
+		Cmd->Socket->OnRawEvent(FullEventName(EventName), [&, EventName](const FString& Event, const sio::message::ptr& RawMessage) {
 		USIOJsonValue* NewValue = NewObject<USIOJsonValue>();
 		auto Value = USIOMessageConvert::ToJsonValue(RawMessage);
 		NewValue->SetRootValue(Value);
-		OnEvent.Broadcast(Event, NewValue);
+		OnEvent.Broadcast(EventName, NewValue);
+		}, Namespace);
 
-	}, Namespace);
+		BoundEventNames.AddUnique(FullEventName(EventName));
+	};
+
+	if (bScriptIsRunning)
+	{
+		BindFunction();
+	}
+	else
+	{
+		//delay binding until our script runs and we have a pid
+		DelayedBindEvents.Add(BindFunction);
+	}
+	
 }
 
 bool UNodeComponent::CallBPFunctionWithResponse(UObject* Target, const FString& FunctionName, TArray<TSharedPtr<FJsonValue>> Response)
@@ -283,6 +309,22 @@ bool UNodeComponent::CallBPFunctionWithResponse(UObject* Target, const FString& 
 
 	UE_LOG(LogTemp, Warning, TEXT("CallFunctionByNameWithArguments: Function '%s' signature not supported expected <%s>"), *FunctionName, *ResponseJsonValue->EncodeJson());
 	return false;
+}
+
+FString UNodeComponent::FullEventName(const FString& EventName)
+{
+	return FString::Printf(TEXT("%d@%s"), ScriptId, *EventName);
+}
+
+void UNodeComponent::UnbindAllScriptEvents()
+{
+	if (Cmd->IsMainScriptRunning())
+	{
+		for (const FString& EventName : BoundEventNames)
+		{
+			Cmd->Socket->UnbindEvent(EventName);
+		}
+	}
 }
 
 // Called every frame

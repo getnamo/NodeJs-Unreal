@@ -83,6 +83,7 @@ public:
 
 	/**
 	* Emit an event with a JsonValue message with a callback function defined by CallBackFunctionName
+	* This may not work due to ipc-event-emitter support
 	*
 	* @param Name					Event name
 	* @param Message				SIOJsonValue
@@ -123,5 +124,10 @@ protected:
 private:
 	TSharedPtr<FNodeCmd> Cmd;
 	TSharedPtr<FNodeEventListener> Listener;
+	TArray<TFunction<void()>> DelayedBindEvents;
+	TArray<FString> BoundEventNames;
 
+	//append process id for mux routing in main script
+	FString FullEventName(const FString& EventName);
+	void UnbindAllScriptEvents();
 };

@@ -113,14 +113,39 @@ bool FNodeCmd::RunMainScript(FString ScriptRelativePath, int32 Port)
 		UE_LOG(LogTemp, Error, TEXT("Main script connection error! Likely crash, stopping main script."));
 		bShouldMainRun = false;
 	};
+
+	//Mainscript console.log
 	Socket->OnEvent(TEXT("console.log"), [&](const FString& Event, const TSharedPtr<FJsonValue>& Message)
 	{
-		//UE_LOG(LogTemp, Log, TEXT("console.log %s"), *USIOJConvert::ToJsonString(Message));
+		UE_LOG(LogTemp, Log, TEXT("console.log: %s"), *USIOJConvert::ToJsonString(Message));
 		for (auto Listener : Listeners)
 		{
 			if (Listener->OnConsoleLog)
 			{
 				Listener->OnConsoleLog(USIOJConvert::ToJsonString(Message));
+			}
+		}
+	});
+
+	//Only forwards script console.log
+	Socket->OnEvent(TEXT("script.log"), [&](const FString& Event, const TSharedPtr<FJsonValue>& Message)
+	{
+		auto ArrayMessage = Message->AsArray();
+		if (ArrayMessage.Num() != 2)
+		{
+			UE_LOG(LogTemp, Error, TEXT("script.log error, incorrect response"));
+			return;
+		}
+
+		FString MessageString = USIOJConvert::ToJsonString(ArrayMessage[0]);
+		int32 Pid = (int32)ArrayMessage[1]->AsNumber();
+
+		//UE_LOG(LogTemp, Log, TEXT("console.log %s"), *USIOJConvert::ToJsonString(Message));
+		for (auto Listener : Listeners)
+		{
+			if (Listener->OnScriptConsoleLog && Listener->ProcessId == Pid)
+			{
+				Listener->OnScriptConsoleLog(MessageString);
 			}
 		}
 	});
