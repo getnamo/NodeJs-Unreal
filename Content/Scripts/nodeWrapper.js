@@ -64,6 +64,7 @@ const startScript = (scriptName, socket, scriptPath)=>{
 
 	child = childProcess.fork(scriptPath + scriptName, [], { silent: true });
 	ipc = new IPCEventEmitter(child);
+	let pid = child.pid;
 
 	//emitLog(fullScriptPath + ' started.');
 
@@ -110,7 +111,7 @@ const startScript = (scriptName, socket, scriptPath)=>{
 	child.stdout.on('data', (msg)=>{
 		let finalMsg = msg.toString().trim();
 		//emitLog('got: ' + msg);
-		scriptLog(socket, finalMsg, child.pid);
+		scriptLog(socket, finalMsg, pid);
 	});
 
 	child.on('exit', (code, signal) =>{
@@ -126,7 +127,7 @@ const startScript = (scriptName, socket, scriptPath)=>{
 		}
 		
 		if(socket){
-			socket.emit(childScriptEnd, child.pid);
+			socket.emit(childScriptEnd, pid);
 		}
 
 		//clear up our ipc

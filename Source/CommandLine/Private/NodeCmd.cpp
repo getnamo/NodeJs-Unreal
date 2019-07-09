@@ -40,7 +40,7 @@ FNodeCmd::FNodeCmd()
 	PluginContentRelativePath = TEXT("../../../Content/Scripts/");
 	Socket = MakeShareable(new FSocketIONative);
 	bShouldStopMainScriptOnNoListeners = false;
-	bUseRemoteMainScript = false;
+	bUseRemoteMainScript = true;
 }
 
 FNodeCmd::~FNodeCmd()
