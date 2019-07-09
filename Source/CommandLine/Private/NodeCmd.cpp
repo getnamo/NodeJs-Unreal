@@ -40,6 +40,7 @@ FNodeCmd::FNodeCmd()
 	PluginContentRelativePath = TEXT("../../../Content/Scripts/");
 	Socket = MakeShareable(new FSocketIONative);
 	bShouldStopMainScriptOnNoListeners = false;
+	bUseRemoteMainScript = false;
 }
 
 FNodeCmd::~FNodeCmd()
@@ -182,6 +183,34 @@ bool FNodeCmd::RunMainScript(FString ScriptRelativePath, int32 Port)
 	});
 
 	Socket->Connect(FString::Printf(TEXT("http://localhost:%d"), Port));
+
+	//bypass actually running the script in this scenario
+	if (bUseRemoteMainScript)
+	{
+		FLambdaRunnable::RunLambdaOnBackGroundThread([&, ScriptRelativePath]
+		{
+			bIsMainRunning = true;
+			bShouldMainRun = true;
+			while (bShouldMainRun)
+			{
+				FPlatformProcess::Sleep(0.1f);
+			}
+			const FString FinishPath = ScriptRelativePath;
+
+			FLambdaRunnable::RunShortLambdaOnGameThread([this, FinishPath]
+			{
+				bIsMainRunning = false;
+				for (auto Listener : Listeners)
+				{
+					if (Listener->OnMainScriptEnd)
+					{
+						Listener->OnMainScriptEnd(FinishPath);
+					}
+				}
+			});
+		});
+		return true;
+	}
 
 	FLambdaRunnable::RunLambdaOnBackGroundThread([&, ScriptRelativePath]
 	{

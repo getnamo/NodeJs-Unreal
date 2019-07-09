@@ -52,6 +52,7 @@ public:
 	FString DefaultMainScript;
 	int32 DefaultPort;
 	bool bShouldStopMainScriptOnNoListeners;
+	bool bUseRemoteMainScript;
 
 private:
 	void StartupMainScriptIfNeeded();

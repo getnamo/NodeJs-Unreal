@@ -36,7 +36,7 @@ const defaultScriptPath = projectContentScriptsFolder;
 //Process functions
 const gracefulExit = (socket)=>{
 	console.log('Done, exiting');
-	io.emit(mainScriptEnd);
+	socket.emit(mainScriptEnd);
 
 	setTimeout(()=>{
 		io.server.close();
@@ -47,7 +47,8 @@ const gracefulExit = (socket)=>{
 //convenience log wrappers
 //re-direct console.log to our socket.io pipe
 const emitLog = (msg) =>{
-	io.emit(logEvent, msg);
+	console.log(msg);
+	//io.emit(logEvent, msg);
 }
 
 const scriptLog = (socket, msg, pid)=>{
@@ -118,18 +119,19 @@ const startScript = (scriptName, socket, scriptPath)=>{
 		if(code == 1){
 			//emitLog('child error: ' + lastError);
 			if(socket){
-				socket.emit('childScriptError', lastError);
+				socket.emit(childScriptError, lastError);
 				lastError = "";
 			}
 
 		}
-		//clear up our ipc
-		ipc.isRunning = false;
-		child = null;
-
+		
 		if(socket){
 			socket.emit(childScriptEnd, child.pid);
 		}
+
+		//clear up our ipc
+		ipc.isRunning = false;
+		child = null;
 	});
 
 	ipc.isRunning = true;
@@ -178,13 +180,17 @@ io.on('connection', (socket)=>{
 		{
 			let pid = eventName.substring(0, idIndex);
 			let eventOnly = eventName.substring(idIndex+1);
-			const ipc = childProcesses[pid].ipc;
-			if(ipc && ipc.isRunning){
-				if(packet.length>1){
-					ipc.emit(eventOnly, args);
-				}
-				else{
-					ipc.emit(eventOnly);
+			let foundProcess = childProcesses[pid];
+
+			if(foundProcess){
+				const ipc = foundProcess.ipc;
+				if(ipc && ipc.isRunning){
+					if(packet.length>1){
+						ipc.emit(eventOnly, args);
+					}
+					else{
+						ipc.emit(eventOnly);
+					}
 				}
 			}
 		}
@@ -242,11 +248,11 @@ io.on('connection', (socket)=>{
 				},100);
 			}
 			else{
-				emitLog(socket, processId + ' process no longer valid for termination.');
+				emitLog(processId + ' process no longer valid for termination.');
 			}
 		}
 		catch(e){
-			emitLog(socket, 'stop script error: ' + util.inspect(e));
+			emitLog('stop script error: ' + util.inspect(e));
 		}
 		
 	});
