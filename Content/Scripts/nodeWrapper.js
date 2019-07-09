@@ -123,7 +123,6 @@ const startScript = (scriptName, socket, scriptPath)=>{
 				socket.emit(childScriptError, lastError);
 				lastError = "";
 			}
-
 		}
 		
 		if(socket){
