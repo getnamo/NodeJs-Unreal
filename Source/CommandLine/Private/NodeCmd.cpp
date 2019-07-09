@@ -157,12 +157,12 @@ bool FNodeCmd::RunMainScript(FString ScriptRelativePath, int32 Port)
 	});
 	Socket->OnEvent(TEXT("childScriptEnd"), [&](const FString& Event, const TSharedPtr<FJsonValue>& Message)
 	{
-		const FString SafeChildPathMessage = USIOJConvert::ToJsonString(Message);
+		int32 ProcessId = (int32)Message->AsNumber();
 		for (auto Listener : Listeners)
 		{
-			if (Listener->OnChildScriptEnd)
+			if (Listener->OnChildScriptEnd && Listener->ProcessId == ProcessId)
 			{
-				Listener->OnChildScriptEnd(SafeChildPathMessage);
+				Listener->OnChildScriptEnd(ProcessId);
 			}
 		}
 	});

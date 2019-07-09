@@ -128,7 +128,7 @@ const startScript = (scriptName, socket, scriptPath)=>{
 		child = null;
 
 		if(socket){
-			socket.emit(childScriptEnd, fullScriptPath);
+			socket.emit(childScriptEnd, child.pid);
 		}
 	});
 

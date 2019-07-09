@@ -12,7 +12,7 @@ public:
 	TFunction<void(const FString& LogMsg)> OnScriptConsoleLog;
 	TFunction<void(const FString& ScriptRelativePath)> OnMainScriptEnd;
 	TFunction<void(int32 ProcessId)> OnChildScriptBegin;
-	TFunction<void(const FString& ScriptRelativePath)> OnChildScriptEnd;
+	TFunction<void(int32 ScriptId)> OnChildScriptEnd;
 	TFunction<void(const FString& ScriptRelativePath, const FString& ScriptErrorMessage)> OnScriptError;
 	int32 ProcessId;
 
