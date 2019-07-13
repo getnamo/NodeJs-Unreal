@@ -1,5 +1,5 @@
 # nodejs-ue4
-Embedd node.js as an unreal plugin.
+Embed node.js as an unreal plugin.
 
 nearly functional, WIP.
 
