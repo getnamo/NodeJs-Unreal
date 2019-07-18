@@ -1,11 +1,36 @@
 # nodejs-ue4
-Embed node.js as an unreal plugin. This enables you to embed cool things like: https://colorlib.com/wp/npm-packages-node-js/.
+Embed node.js as an unreal plugin. This enables you to embed cool things like: https://www.npmjs.com/.
 
 Want to control unreal with javascript? consider using https://github.com/ncsoft/Unreal.js which is much more feature-rich. This plugin instead focuses on bringing node.js and npm api on background threads.
 
 Currently in an early working state, may have bugs!
 
 Got a question or problem? post to https://github.com/getnamo/nodejs-ue4/issues
+
+## What can you do with it?
+
+A lot of really useful programming solutions exist for node.js which is far less verbose than native C++. Anything npm can do, you can now do in unreal. A small selection of examples follows.
+
+#### Math
+- Lib https://www.npmjs.com/package/mathjs
+- Expressions https://www.npmjs.com/package/math-expressions
+
+#### Communications
+Embedded server? Websockets? WebRTC? https? rsync? email?
+
+https://www.npmjs.com/search?q=keywords:communication
+
+#### Commandline
+- Shell https://www.npmjs.com/package/shelljs
+- Zip https://www.npmjs.com/package/jszip
+
+#### Image manipulation/conversion
+- Sharp https://www.npmjs.com/package/sharp
+
+#### And much much more:
+- https://www.npmjs.com/
+- https://github.com/bsonntag/cool-node-modules
+- https://colorlib.com/wp/npm-packages-node-js/.
 
 ## Quick Install & Setup ##
 
