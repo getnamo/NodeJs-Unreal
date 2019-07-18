@@ -1,7 +1,7 @@
 # nodejs-ue4
 Embed node.js as an unreal plugin. This enables you to embed cool things like: https://colorlib.com/wp/npm-packages-node-js/.
 
-Want to control unreal with javascript? try https://github.com/ncsoft/Unreal.js which is much more feature rich. This plugin instead focuses on bringin node and npm api on background threads.
+Want to control unreal with javascript? try https://github.com/ncsoft/Unreal.js which is much more feature rich. This plugin instead focuses on bringing node.js and npm api on background threads.
 
 Currently in an early working state, may have bugs!
 
