@@ -35,7 +35,7 @@ public:
 	~FNodeCmd();
 	
 	//Start a node.js script
-	void RunChildScript(const FString& ScriptRelativePath);
+	void RunChildScript(const FString& ScriptRelativePath, FNodeEventListener* Listener = nullptr);
 
 	//Forcefully stop the script
 	void StopMainScript();

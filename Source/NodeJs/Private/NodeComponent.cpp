@@ -93,7 +93,7 @@ void UNodeComponent::RunScript(const FString& ScriptRelativePath)
 
 	if (!bScriptIsRunning) 
 	{
-		Cmd->RunChildScript(ScriptRelativePath);
+		Cmd->RunChildScript(ScriptRelativePath, Listener.Get());
 	}
 	else
 	{

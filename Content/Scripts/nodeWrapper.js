@@ -62,7 +62,7 @@ const startScript = (scriptName, socket, scriptPath)=>{
 	}
 	let fullScriptPath = scriptPath + scriptName;
 
-	child = childProcess.fork(scriptPath + scriptName, [], { silent: true });
+	let child = childProcess.fork(scriptPath + scriptName, [], { silent: true });
 	ipc = new IPCEventEmitter(child);
 	let pid = child.pid;
 
@@ -77,7 +77,6 @@ const startScript = (scriptName, socket, scriptPath)=>{
 			let eventName = data.emit.shift();
 			let args = data.emit;
 			
-
 			let combinedEventName = child.pid + "@" + eventName;
 
 			//scriptLog(socket, 'event: ' + combinedEventName + ", args: " + args);

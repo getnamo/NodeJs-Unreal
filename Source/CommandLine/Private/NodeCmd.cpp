@@ -273,22 +273,19 @@ bool FNodeCmd::RunMainScript(FString ScriptRelativePath, int32 Port)
 	return true;
 }
 
-void FNodeCmd::RunChildScript(const FString& ScriptRelativePath)
+void FNodeCmd::RunChildScript(const FString& ScriptRelativePath, FNodeEventListener* Listener /*= nullptr*/)
 {
 	//StartupMainScriptIfNeeded();
 
 	if (bIsMainRunning)
 	{
-		Socket->Emit(TEXT("runChildScript"), ScriptRelativePath, [this](const TArray<TSharedPtr<FJsonValue>>& ResponseArray){
+		Socket->Emit(TEXT("runChildScript"), ScriptRelativePath, [this, Listener](const TArray<TSharedPtr<FJsonValue>>& ResponseArray) {
 			int32 ProcessId = ResponseArray[0]->AsNumber();
 			RunningChildScripts.Add(ProcessId);
 
-			for (auto Listener : Listeners) 
+			if (Listener)
 			{
-				if (Listener->OnChildScriptBegin)
-				{
-					Listener->OnChildScriptBegin(ProcessId);
-				}
+				Listener->OnChildScriptBegin(ProcessId);
 			}
 		});
 	}
