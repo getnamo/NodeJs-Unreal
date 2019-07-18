@@ -115,7 +115,7 @@ When the script emits the ```result``` event, it will return to our component ``
 
 That's the basics! There are some other events and functions for e.g. starting/stopping and getting notifications of those states, but largely anything else will be in your node.js script side.
 
-### Usage Notes
+## Usage Notes
 
 #### Errors
 If you write an error in your script, it will spit it out in your output log. Hitting save and re-running the component will re-run the script.
