@@ -96,3 +96,7 @@ If you write an error in your script, it will spit it out in your output log. Hi
 #### npm modules
 
 For v0.1, install your npm modules manually via powershell (can be locally installed). Location of the embedded npm.exe is: ```Plugins/nodejs-ue4/Source/ThirdParty/node```. Improvement to this is planned (https://github.com/getnamo/nodejs-ue4/issues/2)
+
+#### Multiple scripts
+
+Works, just add another component and all action for a script will be filtered to only communicate to the component that launched it.
