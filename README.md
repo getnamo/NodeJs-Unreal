@@ -115,6 +115,8 @@ When the script emits the ```result``` event, it will return to our component ``
 
 That's the basics! There are some other events and functions for e.g. starting/stopping and getting notifications of those states, but largely anything else will be in your node.js script side.
 
+### Usage Notes
+
 #### Errors
 If you write an error in your script, it will spit it out in your output log. Hitting save and re-running the component will re-run the script.
 
@@ -127,3 +129,7 @@ For v0.1, install your npm modules manually via powershell (can be locally insta
 #### Multiple scripts
 
 Works, just add another component and all action for a script will be filtered to only communicate to the component that launched it.
+
+#### Limitations
+
+Communication to embeded node.exe takes place internally via socket.io protocol with tcp. Comms and scripts run on background threads with callbacks on game thread (one subprocess for each script). This means nothing blocks while the scripts run, but sub-tick communcation latency is not possible as each message roundtrip will take at least one game tick. e.g. sending a message to your script on this tick will usually result in a callback on next tick.
