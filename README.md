@@ -9,7 +9,7 @@ Got a question or problem? post to https://github.com/getnamo/nodejs-ue4/issues
 
 ## What can you do with it?
 
-A lot of really useful programming solutions exist for node.js which is far less verbose than native C++. Anything npm can do, you can now do in unreal. A small selection of examples follows.
+A lot of really useful programming solutions exist for node.js which is far less verbose than native C++. Anything npm can do, you can now do in unreal.
 
 #### Math
 - Lib https://www.npmjs.com/package/mathjs
