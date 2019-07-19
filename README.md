@@ -9,23 +9,34 @@ Got a question or problem? post to https://github.com/getnamo/nodejs-ue4/issues
 
 ## What can you do with it?
 
-A lot of really useful programming solutions exist for node.js which is far less verbose than native C++. Anything npm can do, you can now do in unreal.
+A lot of really useful programming solutions exist for node.js; all the npm modules can now be used with unreal. A small sample of possibilities:
+
+
+#### Communications
+
+Great native support for http and embedding simple servers. You could for example run a local embedded webserver and serve that webpage as a UI using e.g. https://github.com/getnamo/BLUI
+
+- Websocket https://www.npmjs.com/package/ws
+- WebRTC https://www.npmjs.com/package/simple-peer
+- Socket.io server https://www.npmjs.com/package/socket.io
+- email https://www.npmjs.com/package/nodemailer
+- RSync https://www.npmjs.com/package/rsync
 
 #### Math
 - Lib https://www.npmjs.com/package/mathjs
 - Expressions https://www.npmjs.com/package/math-expressions
 
-#### Communications
-Embedded server? Websockets? WebRTC? https? rsync? email?
-
-https://www.npmjs.com/search?q=keywords:communication
-
 #### Commandline
+
+You can e.g. embed any other bat or commandline executable and pars args to communicate
+
 - Shell https://www.npmjs.com/package/shelljs
+- Arg parsing https://www.npmjs.com/package/argparse
 - Zip https://www.npmjs.com/package/jszip
 
-#### Image manipulation/conversion
-- Sharp https://www.npmjs.com/package/sharp
+#### Utilities
+- Image manipulation https://www.npmjs.com/package/sharp
+- PDF Generation https://www.npmjs.com/package/pdfkit
 
 #### And much much more:
 - https://www.npmjs.com/
@@ -133,3 +144,5 @@ Works, just add another component and all action for a script will be filtered t
 #### Limitations
 
 Communication to embeded node.exe takes place internally via socket.io protocol with tcp. Comms and scripts run on background threads with callbacks on game thread (one subprocess for each script). This means nothing blocks while the scripts run, but sub-tick communcation latency is not possible as each message roundtrip will take at least one game tick. e.g. sending a message to your script on this tick will usually result in a callback on next tick.
+
+Very large bandwidth may become an issue (e.g. feeding image data each tick), but hasn't been tested and there are some optimizations that can be used.
