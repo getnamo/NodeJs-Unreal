@@ -180,6 +180,26 @@ void UNodeComponent::BindEvent(const FString& EventName, const FString& Namespac
 	
 }
 
+void UNodeComponent::BindEventToFunction(const FString& EventName, const FString& FunctionName, UObject* Target, const FString& Namespace /*= FString(TEXT("/"))*/)
+{
+	if (!FunctionName.IsEmpty())
+	{
+		if (Target == nullptr)
+		{
+			Target = (UObject*)GetOwner();
+		}
+		Cmd->Socket->OnEvent(EventName, [&, FunctionName, Target](const FString& Event, const TSharedPtr<FJsonValue>& Message)
+			{
+				CallBPFunctionWithMessage(Target, FunctionName, Message);
+			}, Namespace);
+	}
+	else
+	{
+		//if we forgot our function name, fallback to regular bind event
+		BindEvent(EventName, Namespace);
+	}
+}
+
 bool UNodeComponent::CallBPFunctionWithResponse(UObject* Target, const FString& FunctionName, TArray<TSharedPtr<FJsonValue>> Response)
 {
 	if (!Target->IsValidLowLevel())
@@ -309,6 +329,14 @@ bool UNodeComponent::CallBPFunctionWithResponse(UObject* Target, const FString& 
 
 	UE_LOG(LogTemp, Warning, TEXT("CallFunctionByNameWithArguments: Function '%s' signature not supported expected <%s>"), *FunctionName, *ResponseJsonValue->EncodeJson());
 	return false;
+}
+
+bool UNodeComponent::CallBPFunctionWithMessage(UObject* Target, const FString& FunctionName, TSharedPtr<FJsonValue> Message)
+{
+	TArray<TSharedPtr<FJsonValue>> Response;
+	Response.Add(Message);
+
+	return CallBPFunctionWithResponse(Target, FunctionName, Response);
 }
 
 FString UNodeComponent::FullEventName(const FString& EventName)

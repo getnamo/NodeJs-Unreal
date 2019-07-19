@@ -83,7 +83,7 @@ public:
 
 	/**
 	* Emit an event with a JsonValue message with a callback function defined by CallBackFunctionName
-	* This may not work due to ipc-event-emitter support
+	* This may not work due to ipc-event-emitter support, untested.
 	*
 	* @param Name					Event name
 	* @param Message				SIOJsonValue
@@ -107,6 +107,20 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "NodeJs Functions")
 	void BindEvent(const FString& EventName, const FString& Namespace = FString(TEXT("/")));
 
+	/**
+	* Bind an event to a function with the given name.
+	* Expects a String message signature which can be decoded from JSON into SIOJsonObject
+	*
+	* @param EventName		Event name
+	* @param FunctionName	The function that gets called when the event is received
+	* @param Target			Optional, defaults to owner. Change to delegate to another class.
+	*/
+	UFUNCTION(BlueprintCallable, Category = "NodeJs Functions")
+	void BindEventToFunction(const FString& EventName,
+			const FString& FunctionName,
+			UObject* Target,
+			const FString& Namespace = FString(TEXT("/")));
+
 	UNodeComponent();
 	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
 
@@ -120,6 +134,7 @@ protected:
 	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
 
 	bool CallBPFunctionWithResponse(UObject* Target, const FString& FunctionName, TArray<TSharedPtr<FJsonValue>> Response);
+	bool CallBPFunctionWithMessage(UObject* Target, const FString& FunctionName, TSharedPtr<FJsonValue> Message);
 
 private:
 	TSharedPtr<FNodeCmd> Cmd;
