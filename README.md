@@ -143,6 +143,8 @@ Works, just add another component and all action for a script will be filtered t
 
 #### Limitations
 
+Current builds are Win64 only.
+
 Communication to embeded node.exe takes place internally via socket.io protocol with tcp. Comms and scripts run on background threads with callbacks on game thread (one subprocess for each script). This means nothing blocks while the scripts run, but sub-tick communcation latency is not possible as each message roundtrip will take at least one game tick. e.g. sending a message to your script on this tick will usually result in a callback on next tick.
 
 Very large bandwidth may become an issue (e.g. feeding image data each tick), but hasn't been tested and there are some optimizations that can be used.
