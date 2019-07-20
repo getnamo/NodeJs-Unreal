@@ -1,6 +1,9 @@
 # nodejs-ue4
 Embed node.js as an unreal plugin. This enables you to embed cool things like: https://www.npmjs.com/.
 
+[![GitHub release](https://img.shields.io/github/release/getnamo/nodejs-ue4.svg)](https://github.com/getnamo/nodejs-ue4/releases)
+[![Github All Releases](https://img.shields.io/github/downloads/getnamo/nodejs-ue4/total.svg)](https://github.com/getnamo/nodejs-ue4/releases)
+
 Want to control unreal with javascript? consider using https://github.com/ncsoft/Unreal.js which is much more feature-rich. This plugin instead focuses on bringing node.js and npm api on background threads.
 
 Currently in an early working state, may have bugs!
