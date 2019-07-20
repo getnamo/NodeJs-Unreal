@@ -60,7 +60,7 @@ Add a ```Node Component``` to actor of choice
 
 ![add component](https://i.imgur.com/Xvc6v98.png)
 
-In your component properties set the name of the script you wish to run e.g. ```myscript.js```
+In your component properties set the name of the script you wish to run e.g. ```myscript.js```. This path is relative to ```{Your Project Root}/Content/Scripts/```.
 
 ![set script](https://i.imgur.com/xalQplZ.png)
 
