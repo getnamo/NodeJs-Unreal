@@ -31,11 +31,12 @@ Great native support for http and embedding simple servers. You could for exampl
 
 #### Commandline
 
-You can e.g. embed any other bat or commandline executable and pars args to communicate
+You can e.g. embed any other bat or commandline executable and parse args to control
 
 - Shell https://www.npmjs.com/package/shelljs
 - Arg parsing https://www.npmjs.com/package/argparse
 - Zip https://www.npmjs.com/package/jszip
+- Sandboxed js VM https://www.npmjs.com/package/vm2
 
 #### Utilities
 - Image manipulation https://www.npmjs.com/package/sharp
