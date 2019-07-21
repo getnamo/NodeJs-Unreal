@@ -8,7 +8,11 @@ Want to control unreal with javascript? consider using https://github.com/ncsoft
 
 Currently in an early working state, may have bugs!
 
-Got a question or problem? post to https://github.com/getnamo/nodejs-ue4/issues
+#### Questions and Feedback
+
+Got questions or problems? post to https://github.com/getnamo/nodejs-ue4/issues
+
+or discuss in the [Unreal forum thread](https://forums.unrealengine.com/community/work-in-progress/1644397-node-js)
 
 ## What can you do with it?
 
