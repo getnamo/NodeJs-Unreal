@@ -77,7 +77,7 @@ Now let's look at a basic script
 ### Node Scripts
 Place your script files inside ```{Project Root}/Content/Scripts```
 
-The script files can be vanilla javascript, node.js, and/or include npm modules (for v0.1 dependencies have to be manually installed).
+The script files can be vanilla javascript, node.js, and/or include npm modules (since v0.2 ensure you add them to your folder's package.json to auto-resolve on run).
 
 #### A basic example with just console.log output
 
