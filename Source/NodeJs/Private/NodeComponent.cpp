@@ -72,7 +72,8 @@ void UNodeComponent::LinkAndStartWrapperScript()
 			if (ErrorMessage.Contains(TEXT("Error: Cannot find module")))
 			{
 				//but ignore local modules requires
-				if (!ErrorMessage.Contains(TEXT("Error: Cannot find module '.")))
+				if (!( ErrorMessage.Contains(TEXT("find module '.")) &&
+					ErrorMessage.Contains(TEXT("find module \".")) ) )
 				{
 					ResolveNpmDependencies();
 				}
