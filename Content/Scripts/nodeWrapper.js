@@ -15,6 +15,7 @@ const childProcess = require('child_process');
 const IPC = require('ipc-event-emitter').default;
 const IPCEventEmitter = require('ipc-event-emitter').IPCEventEmitter;
 const util = require('util');
+const npm = require('./npmManager.js');
 
 //Fixed events
 const mainScriptEnd = "mainScriptEnd";

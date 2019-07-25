@@ -4,7 +4,8 @@
 	"description": "dependencies for the nodeWrapper",
 	"dependencies": {
 		"express": "^4.17.1",
-		"socket.io": "^2.2.0",
-		"ipc-event-emitter": "^2.0.2"
+		"ipc-event-emitter": "^2.0.2",
+		"npm-programmatic": "0.0.12",
+		"socket.io": "^2.2.0"
 	}
 }
