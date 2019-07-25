@@ -65,6 +65,7 @@ void UNodeComponent::LinkAndStartWrapperScript()
 	Listener->OnScriptError = [this](const FString& ScriptPath, const FString& ErrorMessage)
 	{
 		OnScriptError.Broadcast(ScriptPath, ErrorMessage);
+		bScriptIsRunning = false;
 	};
 	Listener->OnScriptConsoleLog = [this](const FString& ConsoleMessage)
 	{
