@@ -106,6 +106,15 @@ void UNodeComponent::StopScript()
 	Cmd->StopChildScript(ScriptId);
 }
 
+void UNodeComponent::ResolveNpmDependencies()
+{
+	//expects project root relative folder
+	Cmd->ResolveNpmDependencies(TEXT("Content/Scripts/") + DefaultScriptPath, [this](bool bIsInstalled, const FString& ErrorMsg) 
+	{
+		OnNpmDependenciesResolved.Broadcast(bIsInstalled, ErrorMsg);
+	});
+}
+
 void UNodeComponent::Emit(const FString& EventName, USIOJsonValue* Message /*= nullptr*/, const FString& Namespace /*= FString(TEXT("/"))*/)
 {
 	//Set the message is not null

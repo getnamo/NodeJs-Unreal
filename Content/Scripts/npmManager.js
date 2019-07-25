@@ -27,7 +27,7 @@ const installIfNeeded = (project, callback)=>{
 		process.chdir(project);
 	}
 	catch(e){
-		callback(e);
+		callback(project + ' path is not valid.');
 		return;
 	}
 

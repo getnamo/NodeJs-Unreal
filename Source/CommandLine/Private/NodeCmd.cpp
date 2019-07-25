@@ -320,6 +320,27 @@ bool FNodeCmd::IsMainScriptRunning()
 	return bIsMainRunning;
 }
 
+void FNodeCmd::ResolveNpmDependencies(const FString& ProjectRootRelativePath, TFunction<void(bool, const FString&)> ResultCallback)
+{
+	if (bIsMainRunning && Socket->bIsConnected)
+	{
+		Socket->Emit(TEXT("npmInstall"), ProjectRootRelativePath, [&ResultCallback](const TArray<TSharedPtr<FJsonValue>>& ResponseArray)
+		{
+			//Response will be { isInstalled: true } or { err: string }
+			auto Response = ResponseArray[0]->AsObject();
+			bool bIsInstalled = Response->GetBoolField(TEXT("isInstalled"));
+
+			auto Err = Response->TryGetField("err");
+			FString ErrorMsg = TEXT("No error.");
+			if(Err.IsValid())
+			{
+				ErrorMsg = Err->AsString();
+			}
+			ResultCallback(bIsInstalled, ErrorMsg);
+		});
+	}
+}
+
 PROCESS_INFORMATION CreateChildProcess(const FString& Process, const FString& Commands, const FString& InProcessDirectory) {
 
 	//largely from https://stackoverflow.com/questions/14147138/capture-output-of-spawned-process-to-string

@@ -12,6 +12,7 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FNodeSciptBeginSignature, int32, Pro
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FNodeConsoleLogSignature, FString, LogMessage);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FNodeScriptEndSignature, FString, FinishedScriptRelativePath);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FNodeScriptErrorSignature, FString, ScriptRelativePath, FString, ErrorMessage);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FNpmInstallResultSignature, bool, bIsInstalled, FString, ErrorMessage);
 
 UCLASS( ClassGroup=(Custom), meta=(BlueprintSpawnableComponent) )
 class NODEJS_API UNodeComponent : public UActorComponent
@@ -34,6 +35,9 @@ public:
 
 	UPROPERTY(BlueprintAssignable, Category = "NodeJs Events")
 	FNodeScriptErrorSignature OnScriptError;
+
+	UPROPERTY(BlueprintAssignable, Category = "Npm Events")
+	FNpmInstallResultSignature OnNpmDependenciesResolved;
 
 	//set this to true if you'd like the default script to start with the component
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = NodeJsProperties)
@@ -70,6 +74,10 @@ public:
 	/** forcibly stop the script */
 	UFUNCTION(BlueprintCallable, Category = "NodeJs Functions")
 	void StopScript();
+
+	/** Checks your DefaultScriptPath package.json dependencies and installs them if needed */
+	UFUNCTION(BlueprintCallable, Category = "NodeJs Functions")
+	void ResolveNpmDependencies();
 
 	/**
 	* Emit an event with a JsonValue message

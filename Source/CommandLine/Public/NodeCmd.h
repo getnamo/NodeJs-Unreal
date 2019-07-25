@@ -43,6 +43,8 @@ public:
 
 	bool IsMainScriptRunning();
 
+	void ResolveNpmDependencies(const FString& ProjectRootRelativePath, TFunction<void(bool, const FString&)> ResultCallback);
+
 	//listening to events node.js
 	void AddEventListener(TSharedPtr<FNodeEventListener> Listener);
 	void RemoveEventListener(TSharedPtr<FNodeEventListener> Listener);
