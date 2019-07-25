@@ -18,6 +18,11 @@ const IPC = require('ipc-event-emitter').default;
 const IPCEventEmitter = require('ipc-event-emitter').IPCEventEmitter;
 const util = require('util');
 
+//For file watching
+const fs = require('fs');
+const crypto = require('crypto');
+const cryptoAlgorithm = 'sha1';
+
 //Fixed events
 const mainScriptEnd = "mainScriptEnd";
 const stopMainScript = "stopMainScript";
@@ -28,6 +33,8 @@ const stopChildScript = "stopChildScript";
 const logEvent = "console.log";	//uniqueish
 const scriptLogEvent = "script.log";
 const npmInstallEvent = "npmInstall";
+const watchChildScript = "watchScriptFile";
+const unwatchChildScript = "unwatchScriptFile";
 
 //folders
 const pluginRootFolder = "../../../";
@@ -85,6 +92,10 @@ const startNpmScript = (targetPath, callback) =>{
 	ipc.emit('installIfNeeded', targetPath);
 }
 
+const routedEventName = (pid, eventName) =>{
+	return pid + "@" + eventName;
+}
+
 const startScript = (scriptName, socket, scriptPath)=>{	
 	//default path is home path
 	if(!scriptPath){
@@ -107,7 +118,7 @@ const startScript = (scriptName, socket, scriptPath)=>{
 			let eventName = data.emit.shift();
 			let args = data.emit;
 			
-			let combinedEventName = child.pid + "@" + eventName;
+			let combinedEventName = routedEventName(child.pid, eventName);
 
 			//scriptLog(socket, 'event: ' + combinedEventName + ", args: " + args);
 
@@ -170,6 +181,47 @@ const startScript = (scriptName, socket, scriptPath)=>{
 	result.child = child;
 
 	return result;
+}
+
+//obtain the hash of a file to see if unique
+const fileHash = (filePath, hashCallback) => {
+
+	fs.createReadStream(filePath)
+		.on('error', (err) => hashCallback(err + filePath))
+		.pipe(crypto.createHash(cryptoAlgorithm)
+			.setEncoding('hex'))
+		.once('finish', function () {
+			hashCallback(null, this.read());
+	});
+}
+
+/** Watch for file changes in the script file*/
+const watchScriptForChanges = (scriptName, changeCallback)=>{
+	const finalPath = projectContentScriptsFolder + scriptName;
+	let watchLockOut = false;
+
+	//store current hash
+	let lastHash = null;	
+	fileHash(finalPath, (err, hash)=>{		
+		lastHash = hash;
+	});
+
+	const watcher = fs.watch(finalPath, (event, filename)=>{
+		if (filename &&
+			!watchLockOut)
+		{
+			watchLockOut = true;
+			setTimeout(()=>watchLockOut = false, 100);
+
+			fileHash(finalPath, (err, hash)=>{
+				if(hash != lastHash){
+					changeCallback(scriptName);
+				}
+				lastHash = hash;
+			});
+		}
+	});
+	return watcher;
 }
 
 //Connection logic
@@ -248,6 +300,15 @@ io.on('connection', (socket)=>{
 		}
 	});
 
+	socket.on(watchChildScript, (scriptName, pid, onChangeCallback)=>{
+		//watchScriptForChanges
+		//socket.emit(routedEventName(pid, eventName));
+	});
+
+	socket.on(unwatchChildScript, (scriptName, pid) => {
+
+	});
+
 	socket.on(stopMainScript, (stopType)=>{
 		emitLog('Stopping main script due to ' + stopType);
 		gracefulExit();
@@ -257,9 +318,9 @@ io.on('connection', (socket)=>{
 		try{
 			const processInfo = childProcesses[processId];
 			if(	processInfo &&
-			 	processInfo.ipc &&
-			 	processInfo.child &&
-			 	processInfo.child.connected){
+				processInfo.ipc &&
+				processInfo.child &&
+				processInfo.child.connected){
 
 				//emitLog(util.inspect(processInfo));
 
@@ -309,3 +370,7 @@ http.listen(port, ()=>{
 startNpmScript(finalPath, (result)=>{
 	console.log(result);
 });*/
+
+watchScriptForChanges("myscript.js", (fileName)=>{
+	console.log(`${fileName} changed.`)
+});
