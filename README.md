@@ -126,9 +126,9 @@ ipc.on('myevent', (vars) => {
 console.log('started');
 ```
 
-On the blueprint side, because our script runs on begin play, bind to the ```result``` event first and then emit a vector2d with x and y float values and convert it to a SIOJsonValue, this will autoconvert to a json object in your script side.
+On the blueprint side, our scripts start on begin play (a toggleable property on the node component) and has an event called ```OnScriptBegin```. We use that event to bind to the ```result``` event first and then emit a vector2d with x and y float values and convert it to a SIOJsonValue, this will autoconvert to a json object in your script side.
 
-![bp comms](https://i.imgur.com/XVe64kA.png)
+![bp comms](https://i.imgur.com/teMzuPz.png)
 
 When the script emits the ```result``` event, it will return to our component ```OnEvent``` event (you can also bind directly to a function see https://github.com/getnamo/socketio-client-ue4#binding-events-to-functions for example syntax). In the example above we simply re-encode the message to json and print to string.
 
