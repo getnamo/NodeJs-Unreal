@@ -143,7 +143,15 @@ If you write an error in your script, it will spit it out in your output log. Hi
 
 #### npm modules
 
-For v0.1, install your npm modules manually via powershell (can be locally installed). Location of the embedded npm.exe is: ```Plugins/nodejs-ue4/Source/ThirdParty/node```. Improvement to this is planned (https://github.com/getnamo/nodejs-ue4/issues/2)
+Since v0.2 script errors cause by npm modules missing will auto-check your package.json for missing module. If it doesn't exist it will warn you about it, if it does exist it will auto-resolve the dependencies and re-run your script after installation.
+
+Basically keep your script's package.json up to date with the required dependencies and it will auto-install them as needed without performance implications (doesn't check every run, only on script error).
+
+![properties](https://i.imgur.com/s5o983w.png)
+
+You can disable this auto-resolving and auto-run on npm install via the node component properties. Then you can resolve Npm dependencies at your own time with the node component function ```Resolve Npm Dependencies```.
+
+![resolve npm manually](https://i.imgur.com/3slggp8.png)
 
 #### Multiple scripts
 
