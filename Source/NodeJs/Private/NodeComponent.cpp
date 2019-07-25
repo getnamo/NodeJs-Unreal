@@ -2,6 +2,9 @@
 #include "NodeComponent.h"
 #include "NodeJs.h"
 #include "SIOMessageConvert.h"
+#include "Runtime/Core/Public/HAL/PlatformFilemanager.h"
+#include "Runtime/Core/Public/Misc/FileHelper.h"
+#include "Runtime/Core/Public/Misc/Paths.h"
 
 // Sets default values for this component's properties
 UNodeComponent::UNodeComponent()
@@ -68,14 +71,49 @@ void UNodeComponent::LinkAndStartWrapperScript()
 	{
 		if (bResolveDependenciesOnScriptModuleError) 
 		{
+			const FString ModuleErrorMatch = TEXT("Error: Cannot find module ");
+			int32 ModuleErrorStart = ErrorMessage.Find(ModuleErrorMatch) + ModuleErrorMatch.Len();
 			//Check our error message for the magic line
-			if (ErrorMessage.Contains(TEXT("Error: Cannot find module")))
+			if (ModuleErrorStart != INDEX_NONE)
 			{
+				FString SubStringError = ErrorMessage.Mid(ModuleErrorStart);
+				bool SingleQuote = SubStringError.StartsWith(TEXT("'"));
+				bool DoubleQuote = SubStringError.StartsWith(TEXT("\""));
+				SubStringError = SubStringError.Mid(1); //left shift one
+
+				bool isLocal = SubStringError.StartsWith(".");
+
 				//but ignore local modules requires
-				if (!( ErrorMessage.Contains(TEXT("find module '.")) &&
-					ErrorMessage.Contains(TEXT("find module \".")) ) )
+				if (!isLocal)
 				{
-					ResolveNpmDependencies();
+					int32 EndQuote = INDEX_NONE;
+					if (SingleQuote)
+					{
+						EndQuote = SubStringError.Find(TEXT("'"));
+					}
+					else
+					{
+						EndQuote = SubStringError.Find(TEXT("\""));
+					}
+					if (EndQuote == INDEX_NONE) 
+					{
+						return;
+					}
+					FString ModuleName = SubStringError.Left(EndQuote);
+
+					//Ok so far it's a valid external dependency. Check if our package.json can resolve it
+					TArray<FString> Packages = PackageDependencies();
+					
+					if (Packages.Contains(ModuleName))
+					{
+						//It can resolve it, run the installation
+						ResolveNpmDependencies();
+					}
+					else
+					{
+						UE_LOG(LogTemp, Warning, TEXT("Your package.json at %s is missing %s dependency, cannot auto-resolve. %s"),
+							*(TEXT("{Project Root}") + ProjectRootRelativeScriptFolder()), *ModuleName);
+					}
 				}
 			}
 		}
@@ -141,12 +179,7 @@ void UNodeComponent::ResolveNpmDependencies()
 	});
 }
 
-FString UNodeComponent::ProjectRootRelativeScriptFolder()
-{
-	FString FullPath = TEXT("Content/Scripts/") + DefaultScriptPath;
-	int32 FoundPos = FullPath.Find("/", ESearchCase::IgnoreCase, ESearchDir::FromEnd);
-	return FullPath.Left(FoundPos);
-}
+
 
 void UNodeComponent::Emit(const FString& EventName, USIOJsonValue* Message /*= nullptr*/, const FString& Namespace /*= FString(TEXT("/"))*/)
 {
@@ -384,6 +417,49 @@ bool UNodeComponent::CallBPFunctionWithMessage(UObject* Target, const FString& F
 FString UNodeComponent::FullEventName(const FString& EventName)
 {
 	return FString::Printf(TEXT("%d@%s"), ScriptId, *EventName);
+}
+
+FString UNodeComponent::ProjectRootRelativeScriptFolder()
+{
+	FString FullPath = TEXT("Content/Scripts/") + DefaultScriptPath;
+	int32 FoundPos = FullPath.Find("/", ESearchCase::IgnoreCase, ESearchDir::FromEnd);
+	return FullPath.Left(FoundPos);
+}
+
+TArray<FString> UNodeComponent::PackageDependencies()
+{
+	TArray<FString> Packages;
+
+	FString AbsoluteFilePath = FPaths::ProjectDir() + ProjectRootRelativeScriptFolder() + TEXT("/package.json");
+
+	TArray<uint8> OutBytes;
+	bool bValidFile = FFileHelper::LoadFileToArray(OutBytes, *AbsoluteFilePath);
+
+	if (!bValidFile)
+	{
+		return Packages;
+	}
+
+	FString JsonString;
+	FFileHelper::BufferToString(JsonString, OutBytes.GetData(), OutBytes.Num());
+
+	auto JsonObject = USIOJConvert::ToJsonObject(JsonString);
+
+	const TSharedPtr<FJsonObject>* DependenciesPtr;
+	bool bValidFormat = JsonObject->TryGetObjectField(TEXT("dependencies"), DependenciesPtr);
+
+	if (!bValidFormat)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("Invalid package.json: %s"), *USIOJConvert::ToJsonString(JsonObject));
+		return Packages;
+	}
+	TSharedPtr<FJsonObject> Dependencies = *DependenciesPtr;
+	for (auto& Value : Dependencies->Values)
+	{
+		Packages.Add(Value.Key);
+	}
+
+	return Packages;
 }
 
 void UNodeComponent::UnbindAllScriptEvents()

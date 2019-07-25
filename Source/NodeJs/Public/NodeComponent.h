@@ -87,8 +87,6 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "NodeJs Functions")
 	void ResolveNpmDependencies();
 
-	FString ProjectRootRelativeScriptFolder();
-
 	/**
 	* Emit an event with a JsonValue message
 	*
@@ -138,6 +136,12 @@ public:
 			const FString& FunctionName,
 			UObject* Target,
 			const FString& Namespace = FString(TEXT("/")));
+
+	/** Get the path to the default script relative to project root */
+	FString ProjectRootRelativeScriptFolder();
+
+	UFUNCTION(BlueprintCallable, Category = "Npm Functions")
+	TArray<FString> PackageDependencies();
 
 	UNodeComponent();
 	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
