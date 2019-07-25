@@ -1,10 +1,12 @@
 /**
-	Wraps subprocess IPC between spawned child processes and unreal 
-	via socket.io protocol.
-
-	Support console.log forwarding as well as ipc-event-emitter two way binding.
-
-	Status: early PoC dev builds, unstable api.
+*	Nodejs-ue4 Plugin - nodeWrapper.js
+*	Wraps subprocess IPC between spawned child processes and unreal 
+*	via socket.io protocol.
+*
+*	Supports console.log forwarding as well as ipc-event-emitter two way binding.
+*	Supports npm package.json installation
+*
+*	Status: early PoC dev builds, unstable api.
 */
 
 const port = 4269;	//fairly unique
@@ -285,8 +287,10 @@ io.on('connection', (socket)=>{
 	});
 
 	//linkup npm install procedure
-	socket.on(npmInstallEvent, (pathToInstallPackages, callback)=>{
-		startNpmScript(pathToInstallPackages, (result)=>{
+	socket.on(npmInstallEvent, (projectRootRelativePath, callback)=>{
+		//We expect a project root relative path
+		const finalPath = projectRootFolder + projectRootRelativePath;
+		startNpmScript(finalPath, (result)=>{
 			console.log('NPM install result: ' + util.inspect(result));
 			callback(result);
 		});
@@ -297,9 +301,9 @@ http.listen(port, ()=>{
 	console.log('listening on *:' + port);
 });
 
+//Debug tests
 //startScript('./child.js');
-
-//projectContentScriptsFolder
-startNpmScript(projectContentScriptsFolder, (result)=>{
-	
-});
+/*const finalPath = projectRootFolder + 'Content/Scripts';
+startNpmScript(finalPath, (result)=>{
+	console.log(result);
+});*/
