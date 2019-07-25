@@ -15,7 +15,6 @@ const childProcess = require('child_process');
 const IPC = require('ipc-event-emitter').default;
 const IPCEventEmitter = require('ipc-event-emitter').IPCEventEmitter;
 const util = require('util');
-const npm = require('./npmManager.js');
 
 //Fixed events
 const mainScriptEnd = "mainScriptEnd";
@@ -54,6 +53,33 @@ const emitLog = (msg) =>{
 
 const scriptLog = (socket, msg, pid)=>{
 	socket.emit(scriptLogEvent, [msg, pid]);
+}
+
+const startNpmScript = (targetPath, callback) =>{
+	/*if(!callback){
+		callback = ()=>{};
+	}*/
+
+	//startup the npmManager script
+	let scriptName = 'npmManager.js';
+	let child = childProcess.fork(pluginContentScriptsFolder + scriptName, [], { silent: true });
+	ipc = new IPCEventEmitter(child);
+	let pid = child.pid;
+
+	child.stderr.setEncoding('utf8');
+	child.stderr.on('data', (err) => {
+		console.log(err);
+	});
+
+	console.log('started npm with ' + pid);
+
+	//bind ipc data and emit call
+	ipc.on('installIfNeededCallback', (result)=>{
+		callback(result);
+		ipc.emit('quit');
+	});
+
+	ipc.emit('installIfNeeded', targetPath);
 }
 
 const startScript = (scriptName, socket, scriptPath)=>{	
@@ -263,3 +289,15 @@ http.listen(port, ()=>{
 });
 
 //startScript('./child.js');
+
+/*npm.installIfNeeded(projectContentScriptsFolder, (err, result)=>{
+	if(!err){
+		console.clear();
+		console.log('success: ' + result.isInstalled);
+	}
+});*/
+
+//projectContentScriptsFolder
+startNpmScript(projectContentScriptsFolder, (result)=>{
+	console.log('got result: ' + util.inspect(result));
+});

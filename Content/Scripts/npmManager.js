@@ -1,21 +1,38 @@
 const npm = require('./../../Source/ThirdParty/node/node_modules/npm');
 const util = require('util');
 const fs = require('fs');
+const ipc = require('ipc-event-emitter').default(process);
 
 //console.log(npm.commands);
-//let project = '../../../../../Content/Scripts/';	//game path
-let project = '../../../Content/Scripts/';	//plugin path
+let project = '../../../../../Content/Scripts/';	//game path
+//let project = '../../../Content/Scripts/';	//plugin path
 
-const installIfNeeded = (project)=>{
+const installIfNeeded = (project, callback)=>{
+	if(!callback){
+		callback = ()=>{};
+	}
+
+	if(!project){
+		callback('No path specified');
+		return;
+	}
+
 	//change directory of process context for npm
 	let previous = process.cwd();
-	process.chdir(project);
+	try{
+		process.chdir(project);
+	}
+	catch(e){
+		callback(e);
+		return;
+	}
 
 	let conf = {'bin-links': false, verbose: false, prefix: project}
 
-	npm.load({conf}, function (er) {
-	 	if (er) {
-	 		return console.log(er);
+	npm.load({conf}, function (err) {
+	 	if (err) {
+	 		callback(err);
+	 		return console.log(err);
 	 	}
 
 	 	//list dependencies, are they all installed/met? if not re-install
@@ -25,12 +42,14 @@ const installIfNeeded = (project)=>{
 	 			npm.commands.install([], (er, data)=>{
 		 			console.log('installed:');
 		 			console.log(data);
-	 		});
+		 			callback(null, { didInstall:data, isInstalled: true });
+	 			});
 				return;
 			};
 
 			let deps = data._dependencies;
-			console.log('installed.');
+			console.log('Dependencies met.');
+			callback(null, { isInstalled:true });
 		});
 
 		//console.log(util.inspect(npm.commands.ls));
@@ -69,7 +88,24 @@ const packages = (project, callback) => {
 	});
 }
 
-installIfNeeded(project);
+exports.installIfNeeded = installIfNeeded;
+
+ipc.on('installIfNeeded', (path)=>{
+	installIfNeeded(path, (err, result)=>{
+		if(err){
+			//make it empty as we check for isInstalled
+			result = {};
+			result.err = err;
+		}
+		ipc.emit('installIfNeededCallback', result);
+	})
+});
+
+ipc.on('quit', ()=>{
+	process.exit(0);
+});
+
+//exports.installIfNeeded(project);
 
 //we need to run a subprocess it seems...
 //process.chdir(previous);
