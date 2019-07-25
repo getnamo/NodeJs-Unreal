@@ -236,10 +236,10 @@ void UNodeComponent::BindEvent(const FString& EventName, const FString& Namespac
 	{
 		//format: pid@EventName, needs to be assessed when we have a process/script id
 		Cmd->Socket->OnRawEvent(FullEventName(EventName), [&, EventName](const FString& Event, const sio::message::ptr& RawMessage) {
-		USIOJsonValue* NewValue = NewObject<USIOJsonValue>();
-		auto Value = USIOMessageConvert::ToJsonValue(RawMessage);
-		NewValue->SetRootValue(Value);
-		OnEvent.Broadcast(EventName, NewValue);
+			USIOJsonValue* NewValue = NewObject<USIOJsonValue>();
+			auto Value = USIOMessageConvert::ToJsonValue(RawMessage);
+			NewValue->SetRootValue(Value);
+			OnEvent.Broadcast(EventName, NewValue);
 		}, Namespace);
 
 		BoundEventNames.AddUnique(FullEventName(EventName));
@@ -265,10 +265,30 @@ void UNodeComponent::BindEventToFunction(const FString& EventName, const FString
 		{
 			Target = (UObject*)GetOwner();
 		}
-		Cmd->Socket->OnEvent(EventName, [&, FunctionName, Target](const FString& Event, const TSharedPtr<FJsonValue>& Message)
-			{
-				CallBPFunctionWithMessage(Target, FunctionName, Message);
+		TFunction<void()> BindFunction = [EventName, FunctionName, Namespace, Target, this]
+		{
+			//format: pid@EventName, needs to be assessed when we have a process/script id
+			Cmd->Socket->OnRawEvent(FullEventName(EventName), [&, EventName](const FString& Event, const sio::message::ptr& RawMessage) {
+				USIOJsonValue* NewValue = NewObject<USIOJsonValue>();
+				auto Value = USIOMessageConvert::ToJsonValue(RawMessage);
+				NewValue->SetRootValue(Value);
+				CallBPFunctionWithMessage(Target, FunctionName, Value);
 			}, Namespace);
+
+			BoundEventNames.AddUnique(FullEventName(EventName));
+		};
+
+		if (bScriptIsRunning)
+		{
+			BindFunction();
+		}
+		else
+		{
+			//delay binding until our script runs and we have a pid
+			DelayedBindEvents.Add(BindFunction);
+		}
+
+		
 	}
 	else
 	{
