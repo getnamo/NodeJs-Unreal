@@ -93,12 +93,17 @@ void UNodeComponent::RunScript(const FString& ScriptRelativePath)
 
 	if (!bScriptIsRunning) 
 	{
-		Cmd->RunChildScript(ScriptRelativePath, Listener.Get());
+		Cmd->RunChildScript(DefaultScriptPath, Listener.Get());
 	}
 	else
 	{
 		UE_LOG(LogTemp, Warning, TEXT("NodeComponent: Script did not start, already running."));
 	}
+}
+
+void UNodeComponent::RunDefaultScript()
+{
+	RunScript(DefaultScriptPath);
 }
 
 void UNodeComponent::StopScript()
@@ -109,7 +114,12 @@ void UNodeComponent::StopScript()
 void UNodeComponent::ResolveNpmDependencies()
 {
 	//expects project root relative folder
-	Cmd->ResolveNpmDependencies(TEXT("Content/Scripts/") + DefaultScriptPath, [this](bool bIsInstalled, const FString& ErrorMsg) 
+	
+	FString FullPath = TEXT("Content/Scripts/") + DefaultScriptPath;
+	int32 FoundPos = FullPath.Find("/", ESearchCase::IgnoreCase, ESearchDir::FromEnd);
+	FString PathOnly = FullPath.Left(FoundPos);
+
+	Cmd->ResolveNpmDependencies(PathOnly, [this](bool bIsInstalled, const FString& ErrorMsg)
 	{
 		OnNpmDependenciesResolved.Broadcast(bIsInstalled, ErrorMsg);
 	});

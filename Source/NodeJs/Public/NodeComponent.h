@@ -67,9 +67,13 @@ public:
 	UPROPERTY(BlueprintReadOnly, Category = NodeJsProperties)
 	int32 ScriptId;
 
-	/** Run your scripts here */
+	/** Run a different script than default */
 	UFUNCTION(BlueprintCallable, Category = "NodeJs Functions")
 	void RunScript(const FString& ScriptRelativePath);
+
+	/** If you didn't run it at begin play, call this function to run the default script */
+	UFUNCTION(BlueprintCallable, Category = "NodeJs Functions")
+	void RunDefaultScript();
 
 	/** forcibly stop the script */
 	UFUNCTION(BlueprintCallable, Category = "NodeJs Functions")

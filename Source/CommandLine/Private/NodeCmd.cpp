@@ -324,17 +324,21 @@ void FNodeCmd::ResolveNpmDependencies(const FString& ProjectRootRelativePath, TF
 {
 	if (bIsMainRunning && Socket->bIsConnected)
 	{
-		Socket->Emit(TEXT("npmInstall"), ProjectRootRelativePath, [&ResultCallback](const TArray<TSharedPtr<FJsonValue>>& ResponseArray)
+		Socket->Emit(TEXT("npmInstall"), ProjectRootRelativePath, [ResultCallback](const TArray<TSharedPtr<FJsonValue>>& ResponseArray)
 		{
 			//Response will be { isInstalled: true } or { err: string }
 			auto Response = ResponseArray[0]->AsObject();
-			bool bIsInstalled = Response->GetBoolField(TEXT("isInstalled"));
+			bool bIsInstalled = false;
 
 			auto Err = Response->TryGetField("err");
 			FString ErrorMsg = TEXT("No error.");
 			if(Err.IsValid())
 			{
 				ErrorMsg = Err->AsString();
+			}
+			else 
+			{
+				bIsInstalled = Response->GetBoolField(TEXT("isInstalled"));
 			}
 			ResultCallback(bIsInstalled, ErrorMsg);
 		});

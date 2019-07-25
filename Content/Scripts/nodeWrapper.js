@@ -290,6 +290,8 @@ io.on('connection', (socket)=>{
 	socket.on(npmInstallEvent, (projectRootRelativePath, callback)=>{
 		//We expect a project root relative path
 		const finalPath = projectRootFolder + projectRootRelativePath;
+
+		emitLog(finalPath);
 		startNpmScript(finalPath, (result)=>{
 			console.log('NPM install result: ' + util.inspect(result));
 			callback(result);
