@@ -1,9 +1,13 @@
+/**
+*	Nodejs-ue4 Plugin - npmManager.js
+*	Installs package.json at specified path from using the ipc communication pipeline as a subprocess.
+*/
+
 const npm = require('./../../Source/ThirdParty/node/node_modules/npm');
 const util = require('util');
 const fs = require('fs');
 const ipc = require('ipc-event-emitter').default(process);
 
-//console.log(npm.commands);
 let project = '../../../../../Content/Scripts/';	//game path
 //let project = '../../../Content/Scripts/';	//plugin path
 
@@ -88,8 +92,10 @@ const packages = (project, callback) => {
 	});
 }
 
+//for debug purposes only
 exports.installIfNeeded = installIfNeeded;
 
+//we expect this script to be run as a subprocess
 ipc.on('installIfNeeded', (path)=>{
 	installIfNeeded(path, (err, result)=>{
 		if(err){
@@ -106,6 +112,3 @@ ipc.on('quit', ()=>{
 });
 
 //exports.installIfNeeded(project);
-
-//we need to run a subprocess it seems...
-//process.chdir(previous);

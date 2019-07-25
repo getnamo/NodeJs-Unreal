@@ -25,6 +25,7 @@ const runChildScript = "runChildScript";
 const stopChildScript = "stopChildScript";
 const logEvent = "console.log";	//uniqueish
 const scriptLogEvent = "script.log";
+const npmInstallEvent = "npmInstall";
 
 //folders
 const pluginRootFolder = "../../../";
@@ -282,6 +283,14 @@ io.on('connection', (socket)=>{
 		}
 		
 	});
+
+	//linkup npm install procedure
+	socket.on(npmInstallEvent, (pathToInstallPackages, callback)=>{
+		startNpmScript(pathToInstallPackages, (result)=>{
+			console.log('NPM install result: ' + util.inspect(result));
+			callback(result);
+		});
+	});
 });
 
 http.listen(port, ()=>{
@@ -290,14 +299,7 @@ http.listen(port, ()=>{
 
 //startScript('./child.js');
 
-/*npm.installIfNeeded(projectContentScriptsFolder, (err, result)=>{
-	if(!err){
-		console.clear();
-		console.log('success: ' + result.isInstalled);
-	}
-});*/
-
 //projectContentScriptsFolder
 startNpmScript(projectContentScriptsFolder, (result)=>{
-	console.log('got result: ' + util.inspect(result));
+	
 });
