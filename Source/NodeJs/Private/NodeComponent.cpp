@@ -8,6 +8,8 @@ UNodeComponent::UNodeComponent()
 {
 	PrimaryComponentTick.bCanEverTick = false;
 	bStartMainScriptIfNeededOnBeginPlay = true;
+	bResolveDependenciesOnScriptModuleError = true;
+	bAutoRunOnNpmInstall = true;
 
 	bRunDefaultScriptOnBeginPlay = true;
 	bReloadOnChange = true;
@@ -64,6 +66,18 @@ void UNodeComponent::LinkAndStartWrapperScript()
 	};
 	Listener->OnScriptError = [this](const FString& ScriptPath, const FString& ErrorMessage)
 	{
+		if (bResolveDependenciesOnScriptModuleError) 
+		{
+			//Check our error message for the magic line
+			if (ErrorMessage.Contains(TEXT("Error: Cannot find module")))
+			{
+				//but ignore local modules requires
+				if (!ErrorMessage.Contains(TEXT("Error: Cannot find module '.")))
+				{
+					ResolveNpmDependencies();
+				}
+			}
+		}
 		OnScriptError.Broadcast(ScriptPath, ErrorMessage);
 		bScriptIsRunning = false;
 	};
@@ -115,15 +129,22 @@ void UNodeComponent::StopScript()
 void UNodeComponent::ResolveNpmDependencies()
 {
 	//expects project root relative folder
-	
-	FString FullPath = TEXT("Content/Scripts/") + DefaultScriptPath;
-	int32 FoundPos = FullPath.Find("/", ESearchCase::IgnoreCase, ESearchDir::FromEnd);
-	FString PathOnly = FullPath.Left(FoundPos);
-
-	Cmd->ResolveNpmDependencies(PathOnly, [this](bool bIsInstalled, const FString& ErrorMsg)
+	Cmd->ResolveNpmDependencies(ProjectRootRelativeScriptFolder(), [this](bool bIsInstalled, const FString& ErrorMsg)
 	{
 		OnNpmDependenciesResolved.Broadcast(bIsInstalled, ErrorMsg);
+
+		if (bAutoRunOnNpmInstall)
+		{
+			RunDefaultScript();
+		}
 	});
+}
+
+FString UNodeComponent::ProjectRootRelativeScriptFolder()
+{
+	FString FullPath = TEXT("Content/Scripts/") + DefaultScriptPath;
+	int32 FoundPos = FullPath.Find("/", ESearchCase::IgnoreCase, ESearchDir::FromEnd);
+	return FullPath.Left(FoundPos);
 }
 
 void UNodeComponent::Emit(const FString& EventName, USIOJsonValue* Message /*= nullptr*/, const FString& Namespace /*= FString(TEXT("/"))*/)

@@ -43,13 +43,17 @@ public:
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = NodeJsProperties)
 	bool bRunDefaultScriptOnBeginPlay;
 
+	/** If you receive a module error that points to a dependency problem, try to re-install your package.json */
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = NodeJsProperties)
+	bool bResolveDependenciesOnScriptModuleError;
+
+	/** Whether you'd like to try to re-run your script after installing dependencies*/
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = NodeJsProperties)
+	bool bAutoRunOnNpmInstall;
+
 	//not yet implemented
 	//UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = NodeJsProperties)
 	bool bReloadOnChange;
-
-	//This should always be true, removed from BP exposure
-	//UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = NodeJsProperties)
-	bool bStartMainScriptIfNeededOnBeginPlay;
 
 	//This will cleanup our main script thread whenever there are no listeners. May slow down quick map travels. Default off.
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = NodeJsProperties)
@@ -82,6 +86,8 @@ public:
 	/** Checks your DefaultScriptPath package.json dependencies and installs them if needed */
 	UFUNCTION(BlueprintCallable, Category = "NodeJs Functions")
 	void ResolveNpmDependencies();
+
+	FString ProjectRootRelativeScriptFolder();
 
 	/**
 	* Emit an event with a JsonValue message
@@ -136,7 +142,9 @@ public:
 	UNodeComponent();
 	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
 
-
+	//This should always be true, removed from BP exposure
+	//UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = NodeJsProperties)
+	bool bStartMainScriptIfNeededOnBeginPlay;
 
 protected:
 	void LinkAndStartWrapperScript();
