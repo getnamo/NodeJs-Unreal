@@ -171,6 +171,7 @@ void UNodeComponent::ResolveNpmDependencies()
 	//expects project root relative folder
 	Cmd->ResolveNpmDependencies(ProjectRootRelativeScriptFolder(), [this](bool bIsInstalled, const FString& ErrorMsg)
 	{
+		UE_LOG(LogTemp, Log, TEXT("package.json dependencies for %s have been installed."), *ProjectRootRelativeScriptFolder());
 		OnNpmDependenciesResolved.Broadcast(bIsInstalled, ErrorMsg);
 
 		if (bAutoRunOnNpmInstall)
