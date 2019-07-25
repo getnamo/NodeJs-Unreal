@@ -143,9 +143,9 @@ If you write an error in your script, it will spit it out in your output log. Hi
 
 #### npm modules
 
-Since v0.2 script errors cause by npm modules missing will auto-check your package.json for missing module. If it doesn't exist it will warn you about it, if it does exist it will auto-resolve the dependencies and re-run your script after installation.
+Since v0.2 script errors caused by missing npm modules will auto-check the ```package.json``` in your script folder for missing modules. If the dependency isn't listed it will warn you about it, if it does exist it will auto-resolve the dependencies and re-run your script after installation; auto-fixing your error.
 
-Basically keep your script's package.json up to date with the required dependencies and it will auto-install them as needed without performance implications (doesn't check every run, only on script error).
+Basically keep your script's ```package.json``` up to date with the required dependencies and it will auto-install them as needed without performance implications (doesn't check every run, only on script error).
 
 ![properties](https://i.imgur.com/s5o983w.png)
 
