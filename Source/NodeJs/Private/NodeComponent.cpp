@@ -106,13 +106,14 @@ void UNodeComponent::LinkAndStartWrapperScript()
 					
 					if (Packages.Contains(ModuleName))
 					{
+						UE_LOG(LogTemp, Log, TEXT("package.json contains missing dependency %s, auto-resolving."), *ModuleName);
 						//It can resolve it, run the installation
 						ResolveNpmDependencies();
 					}
 					else
 					{
-						UE_LOG(LogTemp, Warning, TEXT("Your package.json at %s is missing %s dependency, cannot auto-resolve. %s"),
-							*(TEXT("{Project Root}") + ProjectRootRelativeScriptFolder()), *ModuleName);
+						UE_LOG(LogTemp, Warning, TEXT("Your package.json at %s is missing '%s' dependency, cannot auto-resolve."),
+							*(FPaths::ConvertRelativePathToFull(FPaths::ProjectDir() + ProjectRootRelativeScriptFolder())), *ModuleName);
 					}
 				}
 			}
