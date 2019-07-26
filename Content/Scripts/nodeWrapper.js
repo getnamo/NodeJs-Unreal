@@ -9,16 +9,17 @@
 *	Status: early PoC dev builds, unstable api.
 */
 
-const port = 4269;	//fairly unique
+//External Dependencies
 const app = require('express')();
 const http = require('http').Server(app);
 const io = require('socket.io')(http);
 const util = require('util');
 
-const watcher = require('./fileWatcher.js');
+//Local Dependencies
 const k = require('./constants.js');
 const uf = require('./utilityFunctions.js');
 const scriptHandler = require('./scriptHandler.js');
+const watcher = require('./fileWatcher.js');
 
 //Process functions
 const gracefulExit = (socket)=>{
@@ -163,8 +164,8 @@ io.on('connection', (socket)=>{
 	});
 });
 
-http.listen(port, ()=>{
-	console.log('listening on *:' + port);
+http.listen(k.port, ()=>{
+	console.log('listening on *:' + k.port);
 });
 
 //Debug tests

@@ -1,3 +1,6 @@
+//Socket.io internal port
+exports.port = 4269;	//fairly unique
+
 //Fixed events
 exports.mainScriptEnd = "mainScriptEnd";
 exports.stopMainScript = "stopMainScript";
@@ -11,7 +14,7 @@ exports.npmInstallEvent = "npmInstall";
 exports.watchChildScript = "watchScriptFile";
 exports.unwatchChildScript = "unwatchScriptFile";
 
-//folders
+//Folders
 exports.pluginRootFolder = "../../../";
 exports.pluginContentScriptsFolder = exports.pluginRootFolder + "Content/Scripts/";
 exports.projectRootFolder = exports.pluginRootFolder + "../../";
