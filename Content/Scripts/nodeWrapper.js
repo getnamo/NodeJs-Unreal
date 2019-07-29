@@ -118,12 +118,11 @@ io.on('connection', (socket)=>{
 	});
 
 	socket.on(k.watchChildScript, (scriptName, pid, onChangeCallback)=>{
-		//watchScriptForChanges
-		//socket.emit(uf.routedEventName(pid, eventName));
+		watcher.watchScriptForChanges(scriptName, onChangeCallback);
 	});
 
 	socket.on(k.unwatchChildScript, (scriptName, pid) => {
-
+		watcher.stopWatchingScript(scriptName);
 	});
 
 	socket.on(k.stopMainScript, (stopType)=>{

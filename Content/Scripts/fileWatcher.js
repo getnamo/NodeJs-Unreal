@@ -4,7 +4,9 @@ const crypto = require('crypto');
 const cryptoAlgorithm = 'sha1';
 const k = require('./constants.js');
 
-//obtain the hash of a file to see if unique
+let watchers = {};
+
+//obtain the hash of a file to see if changes are unique
 const fileHash = (filePath, hashCallback) => {
 
 	fs.createReadStream(filePath)
@@ -16,8 +18,24 @@ const fileHash = (filePath, hashCallback) => {
 	});
 }
 
+const stopWatchingScript = (scriptName)=>{
+	const watcher = watchers[scriptName];
+
+	if(watcher){
+		watcher.close();
+	}
+
+	delete watchers[scriptName];
+}
+
 /** Watch for file changes in the script file*/
 const watchScriptForChanges = (scriptName, changeCallback)=>{
+	//already watching script?
+	const currentWatcher = watchers[scriptName];
+	if(currentWatcher){
+		stopWatchingScript(scriptName);
+	}
+
 	const finalPath = k.projectContentScriptsFolder + scriptName;
 	let watchLockOut = false;
 
@@ -42,8 +60,12 @@ const watchScriptForChanges = (scriptName, changeCallback)=>{
 			});
 		}
 	});
+
+	//keep track in our watcher list
+	watchers[scriptName] = watcher;
+
 	return watcher;
 }
 
-
+exports.stopWatchingScript = stopWatchingScript;
 exports.watchScriptForChanges = watchScriptForChanges;
