@@ -67,5 +67,12 @@ const watchScriptForChanges = (scriptName, changeCallback)=>{
 	return watcher;
 }
 
+const stopAllWatchers = ()=>{
+	for(let scriptName in watchers){
+		stopWatchingScript(scriptName);
+	}
+}
+
 exports.stopWatchingScript = stopWatchingScript;
 exports.watchScriptForChanges = watchScriptForChanges;
+exports.stopAll = stopAllWatchers;

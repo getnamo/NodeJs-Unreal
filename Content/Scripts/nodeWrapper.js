@@ -101,6 +101,7 @@ io.on('connection', (socket)=>{
 		//Start the specified script
 		try{
 			let processInfo = scriptHandler.startScript(scriptName, socket, k.defaultScriptPath);
+			processInfo.scriptName = scriptName;
 		
 			//store our child processes in hashlist
 			childProcesses[processInfo.child.pid] = processInfo;
@@ -127,22 +128,31 @@ io.on('connection', (socket)=>{
 
 	socket.on(k.stopMainScript, (stopType)=>{
 		emitLog('Stopping main script due to ' + stopType);
+
+		//stop any remaining watchers
+		watcher.stopAll();
+
+		//exit
 		gracefulExit();
 	});
 
 	socket.on(k.stopChildScript, (processId)=>{
 		try{
 			const processInfo = childProcesses[processId];
-			scriptHandler.stopScript(processInfo, (err, processId)=>{
-				if(err){
-					emitLog(err);
-				}
-				else{
-					delete childProcesses[processId];
-					emitLog('stopped script: ' + processId);
-					socket.emit(k.childScriptEnd, processId);
-				}
-			});
+
+			if(processInfo){
+				
+				scriptHandler.stopScript(processInfo, (err, processId)=>{
+					if(err){
+						emitLog(err);
+					}
+					else{
+						delete childProcesses[processId];
+						emitLog('stopped script: ' + processId);
+						socket.emit(k.childScriptEnd, processId);
+					}
+				});
+			}
 		}
 		catch(e){
 			emitLog('stop script error: ' + util.inspect(e));
