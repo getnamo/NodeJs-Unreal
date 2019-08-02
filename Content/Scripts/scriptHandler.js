@@ -74,6 +74,8 @@ const startScript = (scriptName, socket, scriptPath)=>{
 				lastError = "";
 			}
 		}
+
+		console.log(pid + ' child exit with ' + code);
 		
 		if(socket){
 			socket.emit(k.childScriptEnd, pid);
@@ -102,16 +104,28 @@ const stopScript = (processInfo, callback)=>{
 
 		//emitLog(util.inspect(processInfo));
 
-		processInfo.ipc.emit('kill');
+		processInfo.ipc.emit(k.scriptExitEvent);
+
+		//give 50ms for graceful 'exit' to finish
 		setTimeout(()=>{
+			//graceful exit didn't work, try disconnecting
 			try{
 				processInfo.child.disconnect();
 				callback(null, processId);
+
+				//disconnect didn't work, send SIGINT
+				setTimeout(()=>{
+					if(ipc.isRunning){
+						console.log('Still running, forcefully ending ' + processId);
+						processInfo.child.kill('SIGINT');
+						//console.log(processInfo);
+					}
+				}, 50)
 			}
 			catch(e){
 				callback('script disconnect error: ' + util.inspect(e));
 			}
-		},100);
+		},50);
 	}
 	else{
 		callback(processId + ' process no longer valid for termination.');

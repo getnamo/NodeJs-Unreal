@@ -14,6 +14,7 @@ exports.npmInstallEvent = "npmInstall";
 exports.watchChildScript = "watchScriptFile";
 exports.unwatchChildScript = "unwatchScriptFile";
 exports.watchCallback = "watchCallback@";
+exports.scriptExitEvent = "shouldExit";		//graceful exit event for ipc
 
 //Folders
 exports.pluginRootFolder = "../../../";
