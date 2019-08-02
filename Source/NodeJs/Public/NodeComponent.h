@@ -46,28 +46,32 @@ public:
 	FNodeScriptPathSignature OnScriptChanged;
 
 	//set this to true if you'd like the default script to start with the component
-	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = NodeJsProperties)
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = NodeJsDevProperties)
 	bool bRunDefaultScriptOnBeginPlay;
 
+	/** If enabled, your script file will be watched for any code changes and will call OnScriptChanged event*/
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = NodeJsDevProperties)
+	bool bWatchFileOnBeginPlay;
+
 	/** If you receive a module error that points to a dependency problem, try to re-install your package.json */
-	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = NodeJsProperties)
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = NodeJsAdvancedDevProperties)
 	bool bResolveDependenciesOnScriptModuleError;
 
 	/** Whether you'd like to try to re-run your script after installing dependencies*/
-	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = NodeJsProperties)
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = NodeJsAdvancedDevProperties)
 	bool bAutoRunOnNpmInstall;
 
-	/** If enabled, your script file will be watched for any code changes and will call OnScriptChanged event*/
-	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = NodeJsProperties)
-	bool bWatchFileOnBeginPlay;
-
 	/** Should we reload the script if it changed? Requires bRunDefaultScriptOnBeginPlay and bWatchFileOnBeginPlay to be true*/
-	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = NodeJsProperties)
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = NodeJsAdvancedDevProperties)
 	bool bReloadOnChange;
 
 	//This will cleanup our main script thread whenever there are no listeners. May slow down quick map travels. Default off.
-	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = NodeJsProperties)
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = NodeJsAdvancedDevProperties)
 	bool bStopMainScriptOnNoListeners;
+
+	//Forward binding of events before the script started?
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = NodeJsAdvancedDevProperties)
+	bool bAllowPreBinding;
 
 	//Relative to {project root}/Content/Scripts
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = NodeJsProperties)

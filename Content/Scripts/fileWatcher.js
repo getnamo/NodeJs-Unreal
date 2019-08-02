@@ -23,7 +23,6 @@ const stopWatchingScript = (scriptName)=>{
 
 	if(watcher){
 		watcher.close();
-
 		delete watchers[scriptName];
 	}
 }
@@ -54,6 +53,7 @@ const watchScriptForChanges = (scriptName, changeCallback)=>{
 
 			fileHash(finalPath, (err, hash)=>{
 				if(hash != lastHash){
+					console.log(scriptName + " changed.");
 					changeCallback(scriptName);
 				}
 				lastHash = hash;

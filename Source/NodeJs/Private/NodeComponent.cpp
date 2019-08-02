@@ -2,6 +2,7 @@
 #include "NodeComponent.h"
 #include "NodeJs.h"
 #include "SIOMessageConvert.h"
+#include "LambdaRunnable.h"
 #include "Runtime/Core/Public/HAL/PlatformFilemanager.h"
 #include "Runtime/Core/Public/Misc/FileHelper.h"
 #include "Runtime/Core/Public/Misc/Paths.h"
@@ -23,6 +24,7 @@ UNodeComponent::UNodeComponent()
 	bWatchFileOnBeginPlay = false;
 	bReloadOnChange = true;
 	bIsRestartStop = false;
+	bAllowPreBinding = false;
 
 	Cmd = INodeJsModule::Get().ValidSharedNativePointer(TEXT("main"));
 	Listener = MakeShareable(new FNodeEventListener());
@@ -49,9 +51,18 @@ void UNodeComponent::BeginPlay()
 				{
 					if (bReloadOnChange) 
 					{
-						//Stop and re-start script
-						bIsRestartStop = true;
-						StopScript();
+						//Restart
+						if (bScriptIsRunning) 
+						{
+							//Stop and re-start script
+							bIsRestartStop = true;
+							StopScript();
+						}
+						//Just start
+						else
+						{
+							RunDefaultScript();
+						}
 					}
 					OnScriptChanged.Broadcast(WatchedScriptPath);
 				});
@@ -90,7 +101,13 @@ void UNodeComponent::LinkAndStartWrapperScript()
 		if (bIsRestartStop)
 		{
 			bIsRestartStop = false;
-			RunDefaultScript();
+
+			//Delay by 100ms to give time time for shutdown
+			FLambdaRunnable::SetTimeout([this]
+			{
+				RunDefaultScript();
+			}, 0.1f);
+			
 		}
 	};
 	Listener->OnScriptError = [this](const FString& ScriptPath, const FString& ErrorMessage)
@@ -156,14 +173,18 @@ void UNodeComponent::LinkAndStartWrapperScript()
 	{
 		ScriptId = ProcessId;
 		Listener->ProcessId = ScriptId;
-		OnScriptBegin.Broadcast(ProcessId);
 		bScriptIsRunning = true;
 
-		//run any delayed binds due to process not running
-		for (auto& BindEventFunction : DelayedBindEvents)
+		if (bAllowPreBinding)
 		{
-			BindEventFunction();
+			//run any delayed binds due to process not running
+			for (auto& BindEventFunction : DelayedBindEvents)
+			{
+				BindEventFunction();
+			}
 		}
+
+		OnScriptBegin.Broadcast(ProcessId);
 	};
 
 	Cmd->AddEventListener(Listener);
@@ -292,10 +313,17 @@ void UNodeComponent::BindEventToFunction(const FString& EventName, const FString
 		{
 			Target = (UObject*)GetOwner();
 		}
+		/*const FString SafeEventName = EventName;
+		const FString SafeNamespace = Namespace;
+		const FString SafeFunctionName = FunctionName;
+		const UObject* SafeTarget = Target;*/
+
 		TFunction<void()> BindFunction = [EventName, FunctionName, Namespace, Target, this]
 		{
+			
 			//format: pid@EventName, needs to be assessed when we have a process/script id
-			Cmd->Socket->OnRawEvent(FullEventName(EventName), [&, EventName](const FString& Event, const sio::message::ptr& RawMessage) {
+			Cmd->Socket->OnRawEvent(FullEventName(EventName), [&, EventName, Target, FunctionName](const FString& Event, const sio::message::ptr& RawMessage) 
+			{
 				USIOJsonValue* NewValue = NewObject<USIOJsonValue>();
 				auto Value = USIOMessageConvert::ToJsonValue(RawMessage);
 				NewValue->SetRootValue(Value);
@@ -314,8 +342,6 @@ void UNodeComponent::BindEventToFunction(const FString& EventName, const FString
 			//delay binding until our script runs and we have a pid
 			DelayedBindEvents.Add(BindFunction);
 		}
-
-		
 	}
 	else
 	{

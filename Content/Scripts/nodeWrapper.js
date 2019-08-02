@@ -56,7 +56,8 @@ io.on('connection', (socket)=>{
 		let args = packet[1];
 		let idIndex = eventName.indexOf('@');
 
-		//socket.emit(k.logEvent, 'pid? ' + idIndex);
+		//emitLog('pid? ' + idIndex);
+		//emitLog(childProcesses);
 		
 		//No split? emit to all
 		if(idIndex == -1)
@@ -102,38 +103,21 @@ io.on('connection', (socket)=>{
 		try{
 			let processInfo = scriptHandler.startScript(scriptName, socket, k.defaultScriptPath);
 			processInfo.scriptName = scriptName;
+			const processId = processInfo.child.pid;
 		
 			//store our child processes in hashlist
-			childProcesses[processInfo.child.pid] = processInfo;
+			childProcesses[processId] = processInfo;
 
 			if(startCallback){
 				//callback with id for muxing emits from unreal side
 				startCallback(Number(processInfo.child.pid));
 			}
 
-			emitLog('started script: ' + scriptName);
+			emitLog('started script: ' + scriptName + ' at pid: ' + processId);
 		}
 		catch(e){
 			emitLog('script start Error: ' + util.inspect(e));
 		}
-	});
-
-	socket.on(k.watchChildScript, (scriptName, onChangeCallback)=>{
-		watcher.watchScriptForChanges(scriptName, onChangeCallback);
-	});
-
-	socket.on(k.unwatchChildScript, (scriptName) => {
-		watcher.stopWatchingScript(scriptName);
-	});
-
-	socket.on(k.stopMainScript, (stopType)=>{
-		emitLog('Stopping main script due to ' + stopType);
-
-		//stop any remaining watchers
-		watcher.stopAll();
-
-		//exit
-		gracefulExit();
 	});
 
 	socket.on(k.stopChildScript, (processId)=>{
@@ -158,6 +142,35 @@ io.on('connection', (socket)=>{
 			emitLog('stop script error: ' + util.inspect(e));
 		}
 		
+	});
+
+	socket.on(k.watchChildScript, (scriptName, onChangeCallback)=>{
+		watcher.watchScriptForChanges(scriptName, (fileName)=>{
+			//callback variant - callbacks can only be called once :(
+			if(onChangeCallback){
+				onChangeCallback(fileName);
+			}
+
+			//emit variant watchCallback@scriptName
+			socket.emit(k.watchCallback + scriptName, fileName);
+
+		});
+		emitLog('Started watching ' + scriptName);
+	});
+
+	socket.on(k.unwatchChildScript, (scriptName) => {
+		watcher.stopWatchingScript(scriptName);
+		emitLog('Stopped watching ' + scriptName);
+	});
+
+	socket.on(k.stopMainScript, (stopType)=>{
+		emitLog('Stopping main script due to ' + stopType);
+
+		//stop any remaining watchers
+		watcher.stopAll();
+
+		//exit
+		gracefulExit();
 	});
 
 	//linkup npm install procedure

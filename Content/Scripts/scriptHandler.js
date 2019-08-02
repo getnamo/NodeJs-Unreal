@@ -98,6 +98,7 @@ const stopScript = (processInfo, callback)=>{
 		processInfo.ipc &&
 		processInfo.child &&
 		processInfo.child.connected){
+		const processId = processInfo.child.pid;
 
 		//emitLog(util.inspect(processInfo));
 

@@ -13,6 +13,7 @@ exports.scriptLogEvent = "script.log";
 exports.npmInstallEvent = "npmInstall";
 exports.watchChildScript = "watchScriptFile";
 exports.unwatchChildScript = "unwatchScriptFile";
+exports.watchCallback = "watchCallback@";
 
 //Folders
 exports.pluginRootFolder = "../../../";

@@ -100,17 +100,12 @@ void FNodeCmd::WatchScriptForChanges(const FString& ScriptRelativePath, TFunctio
 		UE_LOG(LogTemp, Warning, TEXT("Can't watch %s because mainscript isn't running."), *ScriptRelativePath);
 		return;
 	}
-	//TFunction< void(const TArray<TSharedPtr<FJsonValue>>&)> CallbackFunction
-	Socket->Emit(TEXT("watchScriptFile"), ScriptRelativePath, [&, OnChildScriptChanged](const TArray<TSharedPtr<FJsonValue>>& Response)
+	Socket->Emit(TEXT("watchScriptFile"), ScriptRelativePath);
+	
+	Socket->OnEvent(TEXT("watchCallback@") + ScriptRelativePath, [&, OnChildScriptChanged](const FString& EventName, const TSharedPtr<FJsonValue>& Message)
 	{
-		if (Response.Num() != 1)
-		{
-			UE_LOG(LogTemp, Warning, TEXT("WatchScriptForChanges->changeCallback response is malformed."));
-			return;
-		}
-
 		//Obtain result and notify callback
-		FString ReceivedScriptRelativePath = Response[0]->AsString();
+		FString ReceivedScriptRelativePath = Message->AsString();
 		if (OnChildScriptChanged)
 		{
 			OnChildScriptChanged(ReceivedScriptRelativePath);
