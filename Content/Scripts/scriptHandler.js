@@ -110,17 +110,24 @@ const stopScript = (processInfo, callback)=>{
 		setTimeout(()=>{
 			//graceful exit didn't work, try disconnecting
 			try{
-				processInfo.child.disconnect();
-				callback(null, processId);
-
-				//disconnect didn't work, send SIGINT
-				setTimeout(()=>{
-					if(ipc.isRunning){
-						console.log('Still running, forcefully ending ' + processId);
-						processInfo.child.kill('SIGINT');
-						//console.log(processInfo);
-					}
-				}, 50)
+				if(ipc.isRunning){
+					processInfo.child.disconnect();
+					
+					//disconnect didn't work, send SIGINT
+					setTimeout(()=>{
+						if(ipc.isRunning){
+							console.log('Still running, forcefully ending ' + processId);
+							processInfo.child.kill('SIGINT');
+							//console.log(processInfo);
+						}
+						//either way we definitely stopped
+						callback(null, processId);
+					}, 50);
+				}
+				else
+				{
+					callback(null, processId);
+				}
 			}
 			catch(e){
 				callback('script disconnect error: ' + util.inspect(e));
