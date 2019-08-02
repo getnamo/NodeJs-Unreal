@@ -49,12 +49,17 @@ public:
 	void AddEventListener(TSharedPtr<FNodeEventListener> Listener);
 	void RemoveEventListener(TSharedPtr<FNodeEventListener> Listener);
 
+	//script file watching
+	void WatchScriptForChanges(const FString& ScriptRelativePath, TFunction<void(const FString& ScriptRelativePath)> OnChildScriptChanged);
+	void StopWatchingScript(const FString& ScriptRelativePath);
+
 	TSharedPtr<FSocketIONative> Socket;
 
 	FString DefaultMainScript;
 	int32 DefaultPort;
 	bool bShouldStopMainScriptOnNoListeners;
 	bool bUseRemoteMainScript;
+	bool bIsWatchingScript;
 
 private:
 	void StartupMainScriptIfNeeded();

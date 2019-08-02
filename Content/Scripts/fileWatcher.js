@@ -23,9 +23,9 @@ const stopWatchingScript = (scriptName)=>{
 
 	if(watcher){
 		watcher.close();
-	}
 
-	delete watchers[scriptName];
+		delete watchers[scriptName];
+	}
 }
 
 /** Watch for file changes in the script file*/

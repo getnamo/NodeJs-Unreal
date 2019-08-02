@@ -15,11 +15,14 @@ UNodeComponent::UNodeComponent()
 	bAutoRunOnNpmInstall = true;
 
 	bRunDefaultScriptOnBeginPlay = true;
-	bReloadOnChange = true;
 	bStopMainScriptOnNoListeners = false;
 	DefaultScriptPath = TEXT("child.js");
 	bScriptIsRunning = false;
 	ScriptId = -1;
+
+	bWatchFileOnBeginPlay = false;
+	bReloadOnChange = true;
+	bIsRestartStop = false;
 
 	Cmd = INodeJsModule::Get().ValidSharedNativePointer(TEXT("main"));
 	Listener = MakeShareable(new FNodeEventListener());
@@ -37,7 +40,22 @@ void UNodeComponent::BeginPlay()
 		LinkAndStartWrapperScript();
 		if (bRunDefaultScriptOnBeginPlay)
 		{
-			RunScript(DefaultScriptPath);
+			RunDefaultScript();
+
+			//watch scripts?
+			if (bWatchFileOnBeginPlay) 
+			{
+				Cmd->WatchScriptForChanges(DefaultScriptPath, [&](const FString& WatchedScriptPath) 
+				{
+					if (bReloadOnChange) 
+					{
+						//Stop and re-start script
+						bIsRestartStop = true;
+						StopScript();
+					}
+					OnScriptChanged.Broadcast(WatchedScriptPath);
+				});
+			}
 		}
 	}
 }
@@ -48,6 +66,10 @@ void UNodeComponent::EndPlay(const EEndPlayReason::Type EndPlayReason)
 	Cmd->bShouldStopMainScriptOnNoListeners = bStopMainScriptOnNoListeners;
 	if (bScriptIsRunning)
 	{
+		if (Cmd->bIsWatchingScript)
+		{
+			Cmd->StopWatchingScript(DefaultScriptPath);
+		}
 		Cmd->StopChildScript(ScriptId);
 
 		//we won't receive the network signal in time so call the stop script event manually
@@ -66,9 +88,17 @@ void UNodeComponent::LinkAndStartWrapperScript()
 		UnbindAllScriptEvents();
 		Listener->ProcessId = -1;
 		ScriptId = -1;
+
+		//Is this a restart?
+		if (bIsRestartStop)
+		{
+			bIsRestartStop = false;
+			RunDefaultScript();
+		}
 	};
 	Listener->OnScriptError = [this](const FString& ScriptPath, const FString& ErrorMessage)
 	{
+		//Auto-fix npm dependency error
 		if (bResolveDependenciesOnScriptModuleError) 
 		{
 			const FString ModuleErrorMatch = TEXT("Error: Cannot find module ");

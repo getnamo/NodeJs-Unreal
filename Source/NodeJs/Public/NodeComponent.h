@@ -10,7 +10,7 @@
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FNodeSciptBeginSignature, int32, ProcessId);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FNodeConsoleLogSignature, FString, LogMessage);
-DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FNodeScriptEndSignature, FString, FinishedScriptRelativePath);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FNodeScriptPathSignature, FString, ScriptRelativePath);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FNodeScriptErrorSignature, FString, ScriptRelativePath, FString, ErrorMessage);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FNpmInstallResultSignature, bool, bIsInstalled, FString, ErrorMessage);
 
@@ -21,9 +21,11 @@ class NODEJS_API UNodeComponent : public UActorComponent
 
 public:	
 
+	//Whenever your script emits an event that you've bound to it will emit here (unless bound to function)
 	UPROPERTY(BlueprintAssignable, Category = "NodeJs Events")
 	FSIOCEventJsonSignature OnEvent;
 
+	//Any console.log message will be sent here
 	UPROPERTY(BlueprintAssignable, Category = "NodeJs Events")
 	FNodeConsoleLogSignature OnConsoleLog;
 
@@ -31,13 +33,17 @@ public:
 	FNodeSciptBeginSignature OnScriptBegin;
 
 	UPROPERTY(BlueprintAssignable, Category = "NodeJs Events")
-	FNodeScriptEndSignature OnScriptEnd;
+	FNodeScriptPathSignature OnScriptEnd;
 
 	UPROPERTY(BlueprintAssignable, Category = "NodeJs Events")
 	FNodeScriptErrorSignature OnScriptError;
 
 	UPROPERTY(BlueprintAssignable, Category = "Npm Events")
 	FNpmInstallResultSignature OnNpmDependenciesResolved;
+
+	//If you enable script watching, hitting save on the script file with changes will call this function
+	UPROPERTY(BlueprintAssignable, Category = "Npm Events")
+	FNodeScriptPathSignature OnScriptChanged;
 
 	//set this to true if you'd like the default script to start with the component
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = NodeJsProperties)
@@ -51,8 +57,12 @@ public:
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = NodeJsProperties)
 	bool bAutoRunOnNpmInstall;
 
-	//not yet implemented
-	//UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = NodeJsProperties)
+	/** If enabled, your script file will be watched for any code changes and will call OnScriptChanged event*/
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = NodeJsProperties)
+	bool bWatchFileOnBeginPlay;
+
+	/** Should we reload the script if it changed? Requires bRunDefaultScriptOnBeginPlay and bWatchFileOnBeginPlay to be true*/
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = NodeJsProperties)
 	bool bReloadOnChange;
 
 	//This will cleanup our main script thread whenever there are no listeners. May slow down quick map travels. Default off.
@@ -165,6 +175,9 @@ private:
 	TSharedPtr<FNodeEventListener> Listener;
 	TArray<TFunction<void()>> DelayedBindEvents;
 	TArray<FString> BoundEventNames;
+
+	//to track specific type of restart
+	bool bIsRestartStop;
 
 	//append process id for mux routing in main script
 	FString FullEventName(const FString& EventName);

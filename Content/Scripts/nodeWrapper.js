@@ -167,14 +167,14 @@ io.on('connection', (socket)=>{
 
 		emitLog(finalPath);
 		scriptHandler.startNpmScript(finalPath, (result)=>{
-			console.log('NPM install result: ' + util.inspect(result));
+			emitLog('NPM install result: ' + util.inspect(result));
 			callback(result);
 		});
 	});
 });
 
 http.listen(k.port, ()=>{
-	console.log('listening on *:' + k.port);
+	emitLog('listening on *:' + k.port);
 });
 
 //Debug tests
