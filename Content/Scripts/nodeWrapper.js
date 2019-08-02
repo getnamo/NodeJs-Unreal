@@ -118,11 +118,11 @@ io.on('connection', (socket)=>{
 		}
 	});
 
-	socket.on(k.watchChildScript, (scriptName, pid, onChangeCallback)=>{
+	socket.on(k.watchChildScript, (scriptName, onChangeCallback)=>{
 		watcher.watchScriptForChanges(scriptName, onChangeCallback);
 	});
 
-	socket.on(k.unwatchChildScript, (scriptName, pid) => {
+	socket.on(k.unwatchChildScript, (scriptName) => {
 		watcher.stopWatchingScript(scriptName);
 	});
 
@@ -184,6 +184,6 @@ startNpmScript(finalPath, (result)=>{
 	console.log(result);
 });*/
 
-watcher.watchScriptForChanges("myscript.js", (fileName)=>{
+/*watcher.watchScriptForChanges("myscript.js", (fileName)=>{
 	console.log(`${fileName} changed.`)
-});
+});*/
