@@ -40,6 +40,9 @@ FNodeCmd::FNodeCmd()
 	PluginContentRelativePath = TEXT("../../../Content/Scripts/");
 	Socket = MakeShareable(new FSocketIONative);
 	bShouldStopMainScriptOnNoListeners = false;
+	bIsWatchingScript = false;
+
+	//swap this to debug main script with an external local server, otherwise crashes will be relatively opaque
 	bUseRemoteMainScript = false;
 }
 
@@ -88,6 +91,49 @@ void FNodeCmd::RemoveEventListener(TSharedPtr<FNodeEventListener> Listener)
 	{
 		StopMainScript();
 	}
+}
+
+void FNodeCmd::WatchScriptForChanges(const FString& ScriptRelativePath, TFunction<void(const FString& ScriptRelativePath)> OnChildScriptChanged)
+{
+	if (!bIsMainRunning)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("Can't watch %s because mainscript isn't running."), *ScriptRelativePath);
+		return;
+	}
+	//TFunction< void(const TArray<TSharedPtr<FJsonValue>>&)> CallbackFunction
+	Socket->Emit(TEXT("watchScriptFile"), ScriptRelativePath, [&, OnChildScriptChanged](const TArray<TSharedPtr<FJsonValue>>& Response)
+	{
+		if (Response.Num() != 1)
+		{
+			UE_LOG(LogTemp, Warning, TEXT("WatchScriptForChanges->changeCallback response is malformed."));
+			return;
+		}
+
+		//Obtain result and notify callback
+		FString ReceivedScriptRelativePath = Response[0]->AsString();
+		if (OnChildScriptChanged)
+		{
+			OnChildScriptChanged(ReceivedScriptRelativePath);
+		}
+	});
+
+	bIsWatchingScript = true;
+}
+
+void FNodeCmd::StopWatchingScript(const FString& ScriptRelativePath)
+{
+	if (!bIsWatchingScript)
+	{
+		return;
+	}
+
+	bIsWatchingScript = false;
+	if (!bIsMainRunning)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("Can't watch %s because mainscript isn't running."), *ScriptRelativePath);
+		return;
+	}
+	Socket->Emit(TEXT("unwatchScriptFile"), ScriptRelativePath);
 }
 
 bool FNodeCmd::RunMainScript(FString ScriptRelativePath, int32 Port)

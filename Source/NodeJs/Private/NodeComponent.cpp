@@ -66,10 +66,7 @@ void UNodeComponent::EndPlay(const EEndPlayReason::Type EndPlayReason)
 	Cmd->bShouldStopMainScriptOnNoListeners = bStopMainScriptOnNoListeners;
 	if (bScriptIsRunning)
 	{
-		if (Cmd->bIsWatchingScript)
-		{
-			Cmd->StopWatchingScript(DefaultScriptPath);
-		}
+		Cmd->StopWatchingScript(DefaultScriptPath);
 		Cmd->StopChildScript(ScriptId);
 
 		//we won't receive the network signal in time so call the stop script event manually
