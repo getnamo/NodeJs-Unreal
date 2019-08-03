@@ -36,7 +36,8 @@ FNodeCmd::FNodeCmd()
 	DefaultMainScript = TEXT("nodeWrapper.js");
 	DefaultPort = 4269;
 	bShouldMainRun = true;
-	ProcessDirectory = FPaths::ConvertRelativePathToFull(FPaths::ProjectDir() + "Plugins/nodejs-ue4/Source/ThirdParty/node");
+
+	ProcessDirectory = FPaths::ConvertRelativePathToFull(FPaths::ProjectDir() + TEXT("Plugins/nodejs-ue4/Source/ThirdParty/node"));
 	PluginContentRelativePath = TEXT("../../../Content/Scripts/");
 	Socket = MakeShareable(new FSocketIONative);
 	bShouldStopMainScriptOnNoListeners = false;
@@ -281,6 +282,8 @@ bool FNodeCmd::RunMainScript(FString ScriptRelativePath, int32 Port)
 		}
 
 		bShouldMainRun = true;
+
+		UE_LOG(LogTemp, Log, TEXT("Starting %s at %s with %s"), *NodeExe, *ProcessDirectory, *ScriptRelativePath)
 
 		PROCESS_INFORMATION piProcInfo = CreateChildProcess(NodeExe, ScriptRelativePath, ProcessDirectory);
 
