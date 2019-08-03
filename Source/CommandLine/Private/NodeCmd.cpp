@@ -43,7 +43,7 @@ FNodeCmd::FNodeCmd()
 	bIsWatchingScript = false;
 
 	//swap this to debug main script with an external local server, otherwise crashes will be relatively opaque
-	bUseRemoteMainScript = true;
+	bUseRemoteMainScript = false;
 }
 
 FNodeCmd::~FNodeCmd()

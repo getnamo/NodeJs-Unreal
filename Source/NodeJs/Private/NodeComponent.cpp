@@ -45,7 +45,7 @@ void UNodeComponent::BeginPlay()
 			RunDefaultScript();
 
 			//watch scripts?
-			if (bWatchFileOnBeginPlay) 
+			if (bWatchFileOnBeginPlay)
 			{
 				Cmd->WatchScriptForChanges(DefaultScriptPath, [&](const FString& WatchedScriptPath) 
 				{
