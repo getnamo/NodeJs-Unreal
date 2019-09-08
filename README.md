@@ -8,6 +8,11 @@ Want to control unreal with javascript? consider using https://github.com/ncsoft
 
 Currently in an early working state, may have bugs!
 
+
+[![](https://i.imgur.com/kk6lERT.gif)](https://i.imgur.com/qhVMtde.mp4)
+
+Example controlling boxes using javascript with live reload in an async loop
+
 #### Questions and Feedback
 
 Got questions or problems? post to https://github.com/getnamo/nodejs-ue4/issues
