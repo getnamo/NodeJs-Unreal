@@ -73,6 +73,7 @@ private:
 
 	FString ProcessDirectory;
 	FString PluginContentRelativePath;
+	FString NodeExe;
 
 	FThreadSafeBool bShouldMainRun;
 	FThreadSafeBool bIsMainRunning;
