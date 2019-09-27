@@ -4,7 +4,7 @@
 #include "CommandLine.h"
 #include "Core.h"
 #include "Modules/ModuleManager.h"
-#include "LambdaRunnable.h"
+#include "CULambdaRunnable.h"
 #include "Interfaces/IPluginManager.h"
 
 #define LOCTEXT_NAMESPACE "FNodeJsModule"
@@ -57,7 +57,7 @@ void FNodeJsModule::ReleaseNativePointer(TSharedPtr<FNodeCmd> PointerToRelease)
 		}
 	}
 
-	FLambdaRunnable::RunLambdaOnBackGroundThreadPool([PointerToRelease, this]
+	FCULambdaRunnable::RunLambdaOnBackGroundThreadPool([PointerToRelease, this]
 	{
 		if (PointerToRelease.IsValid())
 		{

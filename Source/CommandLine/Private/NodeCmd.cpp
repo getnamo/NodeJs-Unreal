@@ -19,7 +19,7 @@
 #include "PostWindowsApi.h"
 //End Windows
 
-#include "LambdaRunnable.h"
+#include "CULambdaRunnable.h"
 
 #define BUFSIZE 4096
 
@@ -230,7 +230,7 @@ bool FNodeCmd::RunMainScript(FString ScriptRelativePath, int32 Port)
 	//bypass actually running the script in this scenario
 	if (bUseRemoteMainScript)
 	{
-		FLambdaRunnable::RunLambdaOnBackGroundThread([&, ScriptRelativePath]
+		FCULambdaRunnable::RunLambdaOnBackGroundThread([&, ScriptRelativePath]
 		{
 			bIsMainRunning = true;
 			bShouldMainRun = true;
@@ -240,7 +240,7 @@ bool FNodeCmd::RunMainScript(FString ScriptRelativePath, int32 Port)
 			}
 			const FString FinishPath = ScriptRelativePath;
 
-			FLambdaRunnable::RunShortLambdaOnGameThread([this, FinishPath]
+			FCULambdaRunnable::RunShortLambdaOnGameThread([this, FinishPath]
 			{
 				bIsMainRunning = false;
 				for (auto Listener : Listeners)
@@ -255,7 +255,7 @@ bool FNodeCmd::RunMainScript(FString ScriptRelativePath, int32 Port)
 		return true;
 	}
 
-	FLambdaRunnable::RunLambdaOnBackGroundThread([&, ScriptRelativePath]
+	FCULambdaRunnable::RunLambdaOnBackGroundThread([&, ScriptRelativePath]
 	{
 		UE_LOG(LogTemp, Log, TEXT("node thread start"));
 		bIsMainRunning = true;
@@ -302,7 +302,7 @@ bool FNodeCmd::RunMainScript(FString ScriptRelativePath, int32 Port)
 		UE_LOG(LogTemp, Log, TEXT("RunScriptTerminated"));
 		const FString FinishPath = ScriptRelativePath;
 
-		FLambdaRunnable::RunShortLambdaOnGameThread([this, FinishPath] 
+		FCULambdaRunnable::RunShortLambdaOnGameThread([this, FinishPath] 
 		{
 			bIsMainRunning = false;
 			for (auto Listener : Listeners)
@@ -340,7 +340,7 @@ void FNodeCmd::StopMainScript()
 {
 	if (bIsMainRunning)
 	{
-		FLambdaRunnable::RunLambdaOnBackGroundThreadPool([this]
+		FCULambdaRunnable::RunLambdaOnBackGroundThreadPool([this]
 		{
 			if (Socket->bIsConnected) 
 			{

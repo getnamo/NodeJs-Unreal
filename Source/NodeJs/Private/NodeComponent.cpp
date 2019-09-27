@@ -2,7 +2,7 @@
 #include "NodeComponent.h"
 #include "NodeJs.h"
 #include "SIOMessageConvert.h"
-#include "LambdaRunnable.h"
+#include "CULambdaRunnable.h"
 #include "Runtime/Core/Public/HAL/PlatformFilemanager.h"
 #include "Runtime/Core/Public/Misc/FileHelper.h"
 #include "Runtime/Core/Public/Misc/Paths.h"
@@ -103,7 +103,7 @@ void UNodeComponent::LinkAndStartWrapperScript()
 			bIsRestartStop = false;
 
 			//Delay by 100ms to give time time for shutdown
-			FLambdaRunnable::SetTimeout([this]
+			FCULambdaRunnable::SetTimeout([this]
 			{
 				RunDefaultScript();
 			}, 0.1f);
