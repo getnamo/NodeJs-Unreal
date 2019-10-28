@@ -25,6 +25,7 @@ UNodeComponent::UNodeComponent()
 	bReloadOnChange = true;
 	bIsRestartStop = false;
 	bAllowPreBinding = false;
+	bBeginPlayScriptHandled = false;
 
 	Cmd = INodeJsModule::Get().ValidSharedNativePointer(TEXT("main"));
 	Listener = MakeShareable(new FNodeEventListener());
@@ -40,34 +41,6 @@ void UNodeComponent::BeginPlay()
 	{
 		//Start the parent script which hosts all scripts
 		LinkAndStartWrapperScript();
-		if (bRunDefaultScriptOnBeginPlay)
-		{
-			RunDefaultScript();
-
-			//watch scripts?
-			if (bWatchFileOnBeginPlay)
-			{
-				Cmd->WatchScriptForChanges(DefaultScriptPath, [&](const FString& WatchedScriptPath) 
-				{
-					if (bReloadOnChange) 
-					{
-						//Restart
-						if (bScriptIsRunning) 
-						{
-							//Stop and re-start script
-							bIsRestartStop = true;
-							StopScript();
-						}
-						//Just start
-						else
-						{
-							RunDefaultScript();
-						}
-					}
-					OnScriptChanged.Broadcast(WatchedScriptPath);
-				});
-			}
-		}
 	}
 }
 
@@ -89,6 +62,40 @@ void UNodeComponent::EndPlay(const EEndPlayReason::Type EndPlayReason)
 
 void UNodeComponent::LinkAndStartWrapperScript()
 {
+	Listener->OnMainScriptBegin = [this](const FString& ScriptRelativePath)
+	{
+		//We wait until after main script started to run our beginplay script
+		if (bRunDefaultScriptOnBeginPlay && !bBeginPlayScriptHandled)
+		{
+			bBeginPlayScriptHandled = true;
+			RunDefaultScript();
+
+			//watch scripts?
+			if (bWatchFileOnBeginPlay)
+			{
+				Cmd->WatchScriptForChanges(DefaultScriptPath, [&](const FString& WatchedScriptPath)
+					{
+						if (bReloadOnChange)
+						{
+							//Restart
+							if (bScriptIsRunning)
+							{
+								//Stop and re-start script
+								bIsRestartStop = true;
+								StopScript();
+							}
+							//Just start
+							else
+							{
+								RunDefaultScript();
+							}
+						}
+						OnScriptChanged.Broadcast(WatchedScriptPath);
+					});
+			}
+		}
+	};
+
 	Listener->OnChildScriptEnd = [this](int32 ProcessId)
 	{
 		OnScriptEnd.Broadcast(DefaultScriptPath);

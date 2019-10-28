@@ -47,6 +47,7 @@ FNodeCmd::FNodeCmd()
 	bUseRemoteMainScript = false;
 
 	NodeExe = TEXT("node.exe");
+	MainScriptRelativePath = TEXT("");
 }
 
 FNodeCmd::~FNodeCmd()
@@ -69,29 +70,30 @@ void FNodeCmd::StartupMainScriptIfNeeded()
 	}
 }
 
-void FNodeCmd::StopMainScriptSync()
-{
-	if (Socket->bIsConnected)
-	{
-		Socket->Emit(TEXT("stopMainScript"), TEXT("ForceStop"));
-		Socket->SyncDisconnect();
-	}
-	bShouldMainRun = false;
-}
-
 void FNodeCmd::AddEventListener(TSharedPtr<FNodeEventListener> Listener)
 {
 	Listeners.AddUnique(Listener);
-	StartupMainScriptIfNeeded();
+
+	if (bIsMainRunning)
+	{
+		Listener->OnMainScriptBegin(MainScriptRelativePath);
+	}
+	else
+	{
+		StartupMainScriptIfNeeded();
+	}
 }
 
 void FNodeCmd::RemoveEventListener(TSharedPtr<FNodeEventListener> Listener)
 {
 	Listeners.Remove(Listener);
+
+	UE_LOG(LogTemp, Log, TEXT("Removed a listener, %d listeners left"), Listeners.Num());
 	
 	//removed last listener? stop main script
 	if (bShouldStopMainScriptOnNoListeners && Listeners.Num() == 0)
 	{
+		UE_LOG(LogTemp, Log, TEXT("Stopping main script."));
 		StopMainScript();
 	}
 }
@@ -148,14 +150,23 @@ bool FNodeCmd::RunMainScript(FString ScriptRelativePath, int32 Port)
 	}
 
 	UE_LOG(LogTemp, Log, TEXT("RunScriptStart"));
-	Socket->OnConnectedCallback = [&](const FString& InSessionId)
+	Socket->OnConnectedCallback = [&, ScriptRelativePath](const FString& InSessionId)
 	{
 		UE_LOG(LogTemp, Log, TEXT("Main script Connected."));
+
+		MainScriptRelativePath = ScriptRelativePath;
+
+		for (auto Listener : Listeners)
+		{
+			Listener->OnMainScriptBegin(ScriptRelativePath);
+		}
 	};
 	Socket->OnReconnectionCallback = [&](uint32 AttemptCount, uint32 DelayInMs) 
 	{
 		UE_LOG(LogTemp, Error, TEXT("Main script connection error! Likely crash, stopping main script."));
 		bShouldMainRun = false;
+
+		MainScriptRelativePath = TEXT("");
 	};
 
 	//Mainscript console.log
@@ -340,16 +351,24 @@ void FNodeCmd::StopMainScript()
 {
 	if (bIsMainRunning)
 	{
-		FCULambdaRunnable::RunLambdaOnBackGroundThreadPool([this]
+		FCULambdaRunnable::RunLambdaOnBackGroundThread([this]
 		{
-			if (Socket->bIsConnected) 
-			{
-				Socket->Emit(TEXT("stopMainScript"), TEXT("ForceStop"));
-				Socket->SyncDisconnect();
-			}
-			bShouldMainRun = false;
+			StopMainScriptSync();
 		});
 	}
+}
+
+void FNodeCmd::StopMainScriptSync()
+{
+	UE_LOG(LogTemp, Log, TEXT("StopMainScriptSync"));
+	if (Socket->bIsConnected)
+	{
+		UE_LOG(LogTemp, Log, TEXT("Socket->bIsConnected"));
+
+		Socket->Emit(TEXT("stopMainScript"), TEXT("ForceStop"));
+		Socket->SyncDisconnect();
+	}
+	bShouldMainRun = false;
 }
 
 void FNodeCmd::StopChildScript(int32 ProcessId)

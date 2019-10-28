@@ -182,6 +182,7 @@ private:
 
 	//to track specific type of restart
 	bool bIsRestartStop;
+	bool bBeginPlayScriptHandled;
 
 	//append process id for mux routing in main script
 	FString FullEventName(const FString& EventName);

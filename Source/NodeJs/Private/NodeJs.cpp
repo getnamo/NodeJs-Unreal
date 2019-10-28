@@ -57,7 +57,7 @@ void FNodeJsModule::ReleaseNativePointer(TSharedPtr<FNodeCmd> PointerToRelease)
 		}
 	}
 
-	FCULambdaRunnable::RunLambdaOnBackGroundThreadPool([PointerToRelease, this]
+	FCULambdaRunnable::RunLambdaOnBackGroundThread([PointerToRelease, this]
 	{
 		if (PointerToRelease.IsValid())
 		{
@@ -74,11 +74,6 @@ void FNodeJsModule::ReleaseNativePointer(TSharedPtr<FNodeCmd> PointerToRelease)
 			{
 				FPlatformProcess::Sleep(0.01f);
 			}
-			//Disconnect, this can happen simultaneously
-			/*if (PointerToRelease->Socket && PointerToRelease->Socket->bIsConnected)
-			{
-				PointerToRelease->Socket->SyncDisconnect();
-			}*/
 
 			//Update our active status
 			bHasActiveNativePointers = PluginNativePointers.Num() > 0;
@@ -119,7 +114,7 @@ void FNodeJsModule::ShutdownModule()
 
 	float Elapsed = 0.f;
 	float SleepInc = 0.01f;
-	while (bHasActiveNativePointers)
+	/*while (bHasActiveNativePointers)
 	{
 		FPlatformProcess::Sleep(SleepInc);
 		Elapsed += SleepInc;
@@ -130,7 +125,7 @@ void FNodeJsModule::ShutdownModule()
 			UE_LOG(LogTemp, Warning, TEXT("FNodeJsModule::ShutdownModule force quit due to long wait to quit."));
 			break;
 		}
-	}
+	}*/
 }
 
 #undef LOCTEXT_NAMESPACE

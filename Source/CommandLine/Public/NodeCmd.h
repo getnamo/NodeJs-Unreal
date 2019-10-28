@@ -10,6 +10,7 @@ class COMMANDLINE_API FNodeEventListener
 public:
 	TFunction<void(const FString& LogMsg)> OnConsoleLog;
 	TFunction<void(const FString& LogMsg)> OnScriptConsoleLog;
+	TFunction<void(const FString& ScriptRelativePath)> OnMainScriptBegin;
 	TFunction<void(const FString& ScriptRelativePath)> OnMainScriptEnd;
 	TFunction<void(int32 ProcessId)> OnChildScriptBegin;
 	TFunction<void(int32 ScriptId)> OnChildScriptEnd;
@@ -74,6 +75,7 @@ private:
 	FString ProcessDirectory;
 	FString PluginContentRelativePath;
 	FString NodeExe;
+	FString MainScriptRelativePath;
 
 	FThreadSafeBool bShouldMainRun;
 	FThreadSafeBool bIsMainRunning;
