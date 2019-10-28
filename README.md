@@ -67,6 +67,10 @@ You can e.g. embed any other bat or commandline executable and parse args to con
  
 ## How to use - Basics
 
+### Early example project
+
+See NodeJSExampleProject-v0.4.2.7z in https://github.com/getnamo/nodejs-ue4/releases/tag/0.4.2 for a drag and drop example project.
+
 ### Blueprint side
 
 Add a ```Node Component``` to actor of choice
