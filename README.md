@@ -145,7 +145,7 @@ That's the basics! There are some other events and functions for e.g. starting/s
 
 ## Packaging
 
-Works since v0.5, just make sure to add the folder where your project Scripts are as additional non-asset directories to copy (typically under ```Content/Scripts```)
+Works since v0.5, just make sure to add the folder where your project Scripts are as additional non-asset directories to copy relative to the Content directory (e.g. for the typical ```Content/Scripts``` folder add just ```Scripts```)
 
 ![](https://i.imgur.com/pURWRY7.png)
 
