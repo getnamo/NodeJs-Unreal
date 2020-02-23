@@ -143,6 +143,12 @@ When the script emits the ```result``` event, it will return to our component ``
 
 That's the basics! There are some other events and functions for e.g. starting/stopping and getting notifications of those states, but largely anything else will be in your node.js script side.
 
+## Packaging
+
+Works since v0.5, just make sure to add the folder where your project Scripts are as additional non-asset directories to copy (typically under ```Content/Scripts```)
+
+![](https://i.imgur.com/pURWRY7.png)
+
 ## Usage Notes
 
 #### Errors
