@@ -1,9 +1,36 @@
 // Copyright 1998-2019 Epic Games, Inc. All Rights Reserved.
 
 using UnrealBuildTool;
+using System.IO;
 
 public class NodeJs : ModuleRules
 {
+	private string ScriptsPath
+	{
+		get { return Path.GetFullPath(Path.Combine(ModuleDirectory, "../../Content/Scripts/")); }
+	}
+
+	private string ThirdPartyPath
+	{
+		get { return Path.GetFullPath(Path.Combine(ModuleDirectory, "../ThirdParty/node")); }
+	}
+
+	public void AddScriptsAsDependencies(ReadOnlyTargetRules Target)
+	{
+		if ((Target.Platform == UnrealTargetPlatform.Win64) || (Target.Platform == UnrealTargetPlatform.Win32))
+		{
+			RuntimeDependencies.Add(Path.Combine(ScriptsPath, "..."));
+		}
+	}
+
+	public void AddThirdPartyAsDependencies(ReadOnlyTargetRules Target)
+	{
+		if ((Target.Platform == UnrealTargetPlatform.Win64) || (Target.Platform == UnrealTargetPlatform.Win32))
+		{
+			RuntimeDependencies.Add(Path.Combine(ThirdPartyPath, "..."));
+		}
+	}
+
 	public NodeJs(ReadOnlyTargetRules Target) : base(Target)
 	{
 		PCHUsage = ModuleRules.PCHUsageMode.UseExplicitOrSharedPCHs;
@@ -53,5 +80,8 @@ public class NodeJs : ModuleRules
 				// ... add any modules that your module loads dynamically here ...
 			}
 			);
+
+		AddScriptsAsDependencies(Target);
+		AddThirdPartyAsDependencies(Target);
 	}
 }
