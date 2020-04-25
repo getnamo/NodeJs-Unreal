@@ -2,8 +2,8 @@
 #include "SIOJConvert.h"
 
 //Windows Includes
-#include "PreWindowsApi.h"
-#include "AllowWindowsPlatformTypes.h"
+#include "Windows/PreWindowsApi.h"
+#include "Windows/AllowWindowsPlatformTypes.h"
 //#include "AllowWindowsPlatformAtomics.h"
 
 #include "Windows.h"
@@ -15,8 +15,8 @@
 #pragma comment(lib, "User32.lib")
 
 //#include "HideWindowsPlatformAtomics.h"
-#include "HideWindowsPlatformTypes.h"
-#include "PostWindowsApi.h"
+#include "Windows/HideWindowsPlatformTypes.h"
+#include "Windows/PostWindowsApi.h"
 //End Windows
 
 #include "CULambdaRunnable.h"
