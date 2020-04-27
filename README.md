@@ -175,7 +175,7 @@ Works, just add another component and all action for a script will be filtered t
 
 #### Using git instead of releases
 
-This is supported, just download https://github.com/getnamo/nodejs-ue4/releases/download/0.5.0/nodejs-v0.5.0git-thirdparty-dependencies-only.7z in https://github.com/getnamo/nodejs-ue4/releases/tag/0.5.0 release and drag and drop it into your project root (where the plugins folder is). This will add dependencies that are missing if you pulled from git.
+This is supported, just download https://github.com/getnamo/nodejs-ue4/releases/download/0.5.0/nodejs-v0.5.0git-thirdparty-dependencies-only.7z in https://github.com/getnamo/nodejs-ue4/releases/tag/0.5.0 release and extract it into your project root (where the plugins folder is). This will add dependencies that are missing if you pulled a fresh clone from git.
 
 #### Limitations
 
