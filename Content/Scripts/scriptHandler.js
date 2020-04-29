@@ -11,9 +11,16 @@ const startScript = (scriptName, socket, scriptPath)=>{
 	if(!scriptPath){
 		scriptPath = './';
 	}
-	let fullScriptPath = scriptPath + scriptName;
 
-	let child = childProcess.fork(scriptPath + scriptName, [], { silent: true });
+	// QUICKFIX: allow parameters to be specified in script path, separated from script path by |
+	let scriptNameAndParameters = scriptName.split('|');
+	let fullScriptPath = scriptPath + scriptNameAndParameters[0];
+	let parameters = [];
+
+	if (scriptNameAndParameters[1])
+		parameters = scriptNameAndParameters[1].match(/[^"]+|[^\s"]+/g);
+
+	let child = childProcess.fork(fullScriptPath, parameters, { silent: true });
 	ipc = new IPCEventEmitter(child);
 	let pid = child.pid;
 
