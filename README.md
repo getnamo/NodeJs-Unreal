@@ -81,6 +81,13 @@ In your component properties set the name of the script you wish to run e.g. ```
 
 ![set script](https://i.imgur.com/xalQplZ.png)
 
+### Command line arguments
+
+Command line arguments are supported, just add them to the script path, separated by "|".
+Arguments which contain spaces should be enclosed in double quotes. Example:
+
+`myscript.js|--parameter=value "--parameter-with-spaces=value with spaces"` 
+
 Now let's look at a basic script
 
 ### Node Scripts
