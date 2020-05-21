@@ -373,12 +373,12 @@ bool UNodeComponent::CallBPFunctionWithResponse(UObject* Target, const FString& 
 	}
 
 	//Check function signature
-	TFieldIterator<UProperty> Iterator(Function);
+	TFieldIterator<FProperty> Iterator(Function);
 
-	TArray<UProperty*> Properties;
+	TArray<FProperty*> Properties;
 	while (Iterator && (Iterator->PropertyFlags & CPF_Parm))
 	{
-		UProperty* Prop = *Iterator;
+		FProperty* Prop = *Iterator;
 		Properties.Add(Prop);
 		++Iterator;
 	}
@@ -469,7 +469,7 @@ bool UNodeComponent::CallBPFunctionWithResponse(UObject* Target, const FString& 
 		//array?
 		else if (FirstParam.Equals("TArray"))
 		{
-			UArrayProperty* ArrayProp = Cast<UArrayProperty>(Properties[0]);
+			FArrayProperty* ArrayProp = CastField<FArrayProperty>(Properties[0]);
 
 			FString Inner;
 			ArrayProp->GetCPPMacroType(Inner);
