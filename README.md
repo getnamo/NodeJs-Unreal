@@ -1,8 +1,8 @@
-# nodejs-ue4
+# NodeJs-Unreal
 Embed node.js as an unreal plugin. This enables you to embed cool things like: https://www.npmjs.com/.
 
-[![GitHub release](https://img.shields.io/github/release/getnamo/nodejs-ue4.svg)](https://github.com/getnamo/nodejs-ue4/releases)
-[![Github All Releases](https://img.shields.io/github/downloads/getnamo/nodejs-ue4/total.svg)](https://github.com/getnamo/nodejs-ue4/releases)
+[![GitHub release](https://img.shields.io/github/release/getnamo/NodeJs-Unreal.svg)](https://github.com/getnamo/NodeJs-Unreal/releases)
+[![Github All Releases](https://img.shields.io/github/downloads/getnamo/NodeJs-Unreal/total.svg)](https://github.com/getnamo/NodeJs-Unreal/releases)
 
 Want to control unreal with javascript? consider using https://github.com/ncsoft/Unreal.js which is much more feature-rich. This plugin instead focuses on bringing node.js and npm api on background threads.
 
@@ -15,7 +15,7 @@ Novelty example controlling boxes using javascript with live reload in an async 
 
 #### Questions and Feedback
 
-Got questions or problems? post to https://github.com/getnamo/nodejs-ue4/issues
+Got questions or problems? post to https://github.com/getnamo/NodeJs-Unreal/issues
 
 or discuss in the [Unreal forum thread](https://forums.unrealengine.com/community/work-in-progress/1644397-node-js)
 
@@ -59,7 +59,7 @@ You can e.g. embed any other bat or commandline executable and parse args to con
 ## Quick Install & Setup ##
 
 ### Via Github Releases
- 1. [Download Latest Release](https://github.com/getnamo/nodejs-ue4/releases)
+ 1. [Download Latest Release](https://github.com/getnamo/NodeJs-Unreal/releases)
  2. Create new or choose project.
  3. Browse to your project folder (typically found at Documents/Unreal Project/{Your Project Root})
  4. Copy *Plugins* folder into your Project root.
@@ -69,7 +69,7 @@ You can e.g. embed any other bat or commandline executable and parse args to con
 
 ### Early example project
 
-See NodeJSExampleProject-v0.4.2.7z in https://github.com/getnamo/nodejs-ue4/releases/tag/0.4.2 for a drag and drop example project.
+See NodeJSExampleProject-v0.4.2.7z in https://github.com/getnamo/NodeJs-Unreal/releases/tag/0.4.2 for a drag and drop example project.
 
 ### Blueprint side
 
@@ -182,7 +182,7 @@ Works, just add another component and all action for a script will be filtered t
 
 #### Using git instead of releases
 
-This is supported, just download https://github.com/getnamo/nodejs-ue4/releases/download/0.5.0/nodejs-v0.5.0git-thirdparty-dependencies-only.7z in https://github.com/getnamo/nodejs-ue4/releases/tag/0.5.0 release and extract it into your project root (where the plugins folder is). This will add dependencies that are missing if you pulled a fresh clone from git.
+This is supported, just download https://github.com/getnamo/NodeJs-Unreal/releases/download/0.5.0/nodejs-v0.5.0git-thirdparty-dependencies-only.7z in https://github.com/getnamo/NodeJs-Unreal/releases/tag/0.5.0 release and extract it into your project root (where the plugins folder is). This will add dependencies that are missing if you pulled a fresh clone from git.
 
 #### Limitations
 
