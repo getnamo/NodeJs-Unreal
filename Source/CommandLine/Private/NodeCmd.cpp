@@ -37,7 +37,7 @@ FNodeCmd::FNodeCmd()
 	DefaultPort = 4269;
 	bShouldMainRun = true;
 
-	ProcessDirectory = FPaths::ConvertRelativePathToFull(FPaths::ProjectDir() + TEXT("Plugins/nodejs-ue4/Source/ThirdParty/node"));
+	ProcessDirectory = FPaths::ConvertRelativePathToFull(FPaths::ProjectDir() + TEXT("Plugins/NodeJs-Unreal/Source/ThirdParty/node"));
 	PluginContentRelativePath = TEXT("../../../Content/Scripts/");
 	Socket = MakeShareable(new FSocketIONative);
 	bShouldStopMainScriptOnNoListeners = false;
@@ -299,6 +299,12 @@ bool FNodeCmd::RunMainScript(FString ScriptRelativePath, int32 Port)
 
 		PROCESS_INFORMATION piProcInfo = CreateChildProcess(NodeExe, ScriptRelativePath, ProcessDirectory);
 
+		if (piProcInfo.dwProcessId == (DWORD)0)
+		{
+			UE_LOG(LogTemp, Warning, TEXT("Node process terminated early, see earlier error message."));
+			bShouldMainRun = false;
+		}
+
 		while (bShouldMainRun)
 		{
 			FPlatformProcess::Sleep(0.1f);
@@ -446,9 +452,11 @@ PROCESS_INFORMATION CreateChildProcess(const FString& Process, const FString& Co
 	CloseHandle(g_hChildStd_ERR_Wr);
 	CloseHandle(g_hChildStd_OUT_Wr);
 	// If an error occurs, exit the application. 
-	if (!bSuccess) {
-		exit(1);
+	if (!bSuccess) 
+	{
+		UE_LOG(LogTemp, Error, TEXT("Failed to launch process at %s with %s. Likely due to plugin path error, compare actual path to expected one printed here."), *ProcessPath, *Command);
 	}
+
 	return piProcInfo;
 }
 
