@@ -39,7 +39,7 @@ FNodeCmd::FNodeCmd()
 
 	ProcessDirectory = FPaths::ConvertRelativePathToFull(FPaths::ProjectDir() + TEXT("Plugins/NodeJs-Unreal/Source/ThirdParty/node"));
 	PluginContentRelativePath = TEXT("../../../Content/Scripts/");
-	Socket = MakeShareable(new FSocketIONative);
+	Socket = MakeShareable(new FSocketIONative(false,true));
 	bShouldStopMainScriptOnNoListeners = false;
 	bIsWatchingScript = false;
 
