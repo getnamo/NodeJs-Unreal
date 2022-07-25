@@ -150,7 +150,7 @@ bool FNodeCmd::RunMainScript(FString ScriptRelativePath, int32 Port)
 	}
 
 	UE_LOG(LogTemp, Log, TEXT("RunScriptStart"));
-	Socket->OnConnectedCallback = [&, ScriptRelativePath](const FString& InSessionId)
+	Socket->OnConnectedCallback = [&, ScriptRelativePath](const FString& SocketId, const FString& SessionId)
 	{
 		UE_LOG(LogTemp, Log, TEXT("Main script Connected."));
 
