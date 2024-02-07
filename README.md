@@ -17,7 +17,9 @@ Novelty example controlling boxes using javascript with live reload in an async 
 
 Got questions or problems? post to https://github.com/getnamo/NodeJs-Unreal/issues
 
-or discuss in the [Unreal forum thread](https://forums.unrealengine.com/community/work-in-progress/1644397-node-js)
+[Unreal forum thread](https://forums.unrealengine.com/community/work-in-progress/1644397-node-js)
+
+[Discord Server](https://discord.gg/qfJUyxaW4s)
 
 ## What can you do with it?
 
