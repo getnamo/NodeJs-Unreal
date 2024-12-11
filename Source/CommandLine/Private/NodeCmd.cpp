@@ -2,7 +2,6 @@
 #include "SIOJConvert.h"
 
 //Windows Includes
-#include "Windows/PreWindowsApi.h"
 #include "Windows/AllowWindowsPlatformTypes.h"
 //#include "AllowWindowsPlatformAtomics.h"
 
@@ -16,7 +15,6 @@
 
 //#include "HideWindowsPlatformAtomics.h"
 #include "Windows/HideWindowsPlatformTypes.h"
-#include "Windows/PostWindowsApi.h"
 //End Windows
 
 #include "CULambdaRunnable.h"
@@ -400,7 +398,7 @@ void FNodeCmd::ResolveNpmDependencies(const FString& ProjectRootRelativePath, TF
 			auto Response = ResponseArray[0]->AsObject();
 			bool bIsInstalled = false;
 
-			auto Err = Response->TryGetField("err");
+			auto Err = Response->TryGetField(TEXT("err"));
 			FString ErrorMsg = TEXT("No error.");
 			if(Err.IsValid())
 			{
