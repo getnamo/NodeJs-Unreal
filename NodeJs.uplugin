@@ -1,7 +1,7 @@
 {
 	"FileVersion": 3,
 	"Version": 1,
-	"VersionName": "1.7.1",
+	"VersionName": "2.0.0a",
 	"FriendlyName": "NodeJs",
 	"Description": "Embed node.js as an unreal plugin.",
 	"Category": "Programming",
