@@ -55,6 +55,7 @@ public class NodeJs : ModuleRules
 				"Core",
 				"Projects",
 				"CommandLine",
+				"CLISystem",
 				"SocketIOClient",
 				"SIOJson",
 				"Json",

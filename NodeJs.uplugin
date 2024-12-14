@@ -31,6 +31,10 @@
 		{
 			"Name": "SocketIOClient",
 			"Enabled": true
-		}
+		},
+		{
+			"Name": "CLISystem",
+			"Enabled": true
+		},
 	]
 }
