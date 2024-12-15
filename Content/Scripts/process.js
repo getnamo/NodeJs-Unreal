@@ -66,6 +66,55 @@ function inlineChild(scriptName, scriptPath) {
 	}
 }
 
+// Function to stop a script
+function stopScript(scriptName) {
+    const scriptEntry = Object.entries(launchedScripts).find(
+        ([, details]) => details.scriptName === scriptName
+    );
+
+    if (!scriptEntry) {
+        log(`"${scriptName}" is not currently running or has not been launched.`, 'Error');
+        return;
+    }
+
+    const [fullPath, { method }] = scriptEntry;
+
+    try {
+        if (method === 'inline') {
+            // Unload the module from the require cache
+            const resolvedPath = require.resolve(fullPath);
+            if (require.cache[resolvedPath]) {
+                delete require.cache[resolvedPath];
+                log(`Unloaded inline script "${scriptName}".`);
+            } else {
+                log(`Inline script "${scriptName}" is not in the require cache.`);
+            }
+        } else if (method === 'child') {
+            // Kill the child process
+            if (activeChildren[scriptName]) {
+                activeChildren[scriptName].child.kill();
+                delete activeChildren[scriptName];
+                log(`Killed child process for "${scriptName}".`);
+            } else {
+                log(`Child process for "${scriptName}" is not active.`);
+            }
+        }
+
+        // Stop watching the script
+        if (watchedScripts[fullPath]) {
+            watchedScripts[fullPath].close();
+            delete watchedScripts[fullPath];
+            log(`Stopped watching "${scriptName}".`);
+        }
+
+        // Remove the script entry from launchedScripts
+        delete launchedScripts[fullPath];
+    } catch (error) {
+        log(`Failed to stop "${scriptName}": ${error.message}`, 'Error');
+        console.error(error);
+    }
+}
+
 // Function to send input to a specific child
 function sendMessageToChild(scriptName, message) {
 	if (!activeChildren[scriptName]) {
@@ -133,57 +182,65 @@ function watchScript(scriptName, scriptPath) {
 
 // CLI input handling
 process.stdin.on('data', (data) => {
-	const input = data.toString().trim();
-	const [command, ...args] = input.split(' ');
+    const input = data.toString().trim();
+    const [command, ...args] = input.split(' ');
 
-	if (command === 'launchChild') {
-		const [scriptName, scriptPath] = args;
-		if (scriptName && scriptPath) {
-			launchChild(scriptName, scriptPath);
-		} else {
-			log('Usage: launchChild <scriptName> <scriptPath>');
-		}
-	} else if (command === 'send') {
-		const [scriptName, ...messageParts] = args;
-		const message = messageParts.join(' ');
-		if (scriptName && message) {
-			sendMessageToChild(scriptName, message);
-		} else {
-			log('Usage: send <scriptName> <message>');
-		}
-	} else if (command === 'launchInline') {
-		const [scriptName, scriptPath] = args;
+    if (command === 'launchChild') {
+        const [scriptName, scriptPath] = args;
+        if (scriptName && scriptPath) {
+            launchChild(scriptName, scriptPath);
+        } else {
+            log('Usage: launchChild <scriptName> <scriptPath>');
+        }
+    } else if (command === 'send') {
+        const [scriptName, ...messageParts] = args;
+        const message = messageParts.join(' ');
+        if (scriptName && message) {
+            sendMessageToChild(scriptName, message);
+        } else {
+            log('Usage: send <scriptName> <message>');
+        }
+    } else if (command === 'launchInline') {
+        const [scriptName, scriptPath] = args;
 
-		if (scriptName && scriptPath) {
-			inlineChild(scriptName, scriptPath);
-		} else {
-			log('Usage: launchInline <scriptName> <scriptPath>');
-		}
-	} else if (command === 'watch') {
-		const [scriptName, scriptPath] = args;
+        if (scriptName && scriptPath) {
+            inlineChild(scriptName, scriptPath);
+        } else {
+            log('Usage: launchInline <scriptName> <scriptPath>');
+        }
+    } else if (command === 'watch') {
+        const [scriptName, scriptPath] = args;
 
-		if (scriptName && scriptPath) {
-			watchScript(scriptName, scriptPath);
-		} else {
-			log('Usage: watch <scriptName> <scriptPath>');
-		}
-	} else if (command === 'scriptsPath') {
-		scriptRoot = args.join(' ');
-		log(`Updated scriptsRoot to: ${scriptRoot}`);
-	} else if (command === 'exit') {
-		log('Exiting parent script.');
-		for (const [scriptName, { child }] of Object.entries(activeChildren)) {
-			log(`Killing child process "${scriptName}".`);
-			child.kill();
-		}
-		for (const [filePath, watcher] of Object.entries(watchedScripts)) {
-			log(`Stopping watch on "${filePath}".`);
-			watcher.close();
-		}
-		process.exit(0);
-	} else {
-		log('Unknown command. Available commands: launchChild, send, launchInline, watch, scriptsPath, exit.');
-	}
+        if (scriptName && scriptPath) {
+            watchScript(scriptName, scriptPath);
+        } else {
+            log('Usage: watch <scriptName> <scriptPath>');
+        }
+    } else if (command === 'stop') {
+        const [scriptName] = args;
+
+        if (scriptName) {
+            stopScript(scriptName);
+        } else {
+            log('Usage: stop <scriptName>');
+        }
+    } else if (command === 'scriptsPath') {
+        scriptRoot = args.join(' ');
+        log(`Updated scriptsRoot to: ${scriptRoot}`);
+    } else if (command === 'exit') {
+        log('Exiting parent script.');
+        for (const [scriptName, { child }] of Object.entries(activeChildren)) {
+            log(`Killing child process "${scriptName}".`);
+            child.kill();
+        }
+        for (const [filePath, watcher] of Object.entries(watchedScripts)) {
+            log(`Stopping watch on "${filePath}".`);
+            watcher.close();
+        }
+        process.exit(0);
+    } else {
+        log('Unknown command. Available commands: launchChild, send, launchInline, watch, stop, scriptsPath, exit.');
+    }
 });
 
 // Handle unexpected errors
