@@ -8,12 +8,12 @@ const launchedScripts = {}; // Track launched scripts with their methods
 let scriptRoot = '../../../../../';
 
 // Helper function to log messages with a category
-function log(message, category = 'Parent') {
-	console.log(`~[${category}] ${message}`);
+function log(message, category = 'Process') {
+	console.log(`~[${category}]~ ${message}`);
 }
 
 // Function to launch a child process for a given script
-function launchChild(scriptName, scriptPath) {
+function launchSubprocess(scriptName, scriptPath) {
 	const fullPath = path.resolve(scriptRoot + scriptPath + scriptName);
 
 	if (activeChildren[scriptName]) {
@@ -30,6 +30,9 @@ function launchChild(scriptName, scriptPath) {
 
 		child.on('exit', (code) => {
 			log(`Child "${scriptName}" exited with code ${code}.`);
+
+			// Signal stop
+			log('end ' + fullPath, 'Action');
 			delete activeChildren[scriptName]; // Remove from active children
 		});
 
@@ -52,6 +55,9 @@ function inlineChild(scriptName, scriptPath) {
 		if (resolvedPath) {
 			// Remove the module from the require cache
 			delete require.cache[resolvedPath];
+
+			// Signal stop
+			log('end ' + fullPath, 'Action');
 		}
 
 		// Re-require the module
@@ -156,7 +162,7 @@ function watchScript(scriptName, scriptPath) {
                     activeChildren[scriptName].child.kill();
                     delete activeChildren[scriptName];
                 }
-                launchChild(scriptName, scriptPath);
+                launchSubprocess(scriptName, scriptPath);
             }
         };
 
@@ -185,12 +191,14 @@ process.stdin.on('data', (data) => {
     const input = data.toString().trim();
     const [command, ...args] = input.split(' ');
 
-    if (command === 'launchChild') {
+    if (command === 'launchSubprocess') {
         const [scriptName, scriptPath] = args;
         if (scriptName && scriptPath) {
-            launchChild(scriptName, scriptPath);
+			const fullPath = path.resolve(scriptRoot + scriptPath + scriptName);
+			log('begin ' + fullPath, 'Action');
+            launchSubprocess(scriptName, scriptPath);
         } else {
-            log('Usage: launchChild <scriptName> <scriptPath>');
+            log('Usage: launchSubprocess <scriptName> <scriptPath>');
         }
     } else if (command === 'send') {
         const [scriptName, ...messageParts] = args;
@@ -204,6 +212,9 @@ process.stdin.on('data', (data) => {
         const [scriptName, scriptPath] = args;
 
         if (scriptName && scriptPath) {
+			const fullPath = path.resolve(scriptRoot + scriptPath + scriptName);
+			log('begin ' + fullPath, 'Action');
+			
             inlineChild(scriptName, scriptPath);
         } else {
             log('Usage: launchInline <scriptName> <scriptPath>');
@@ -231,6 +242,7 @@ process.stdin.on('data', (data) => {
         log('Exiting parent script.');
         for (const [scriptName, { child }] of Object.entries(activeChildren)) {
             log(`Killing child process "${scriptName}".`);
+			log('end ' + scriptName, 'Action');
             child.kill();
         }
         for (const [filePath, watcher] of Object.entries(watchedScripts)) {
@@ -239,7 +251,7 @@ process.stdin.on('data', (data) => {
         }
         process.exit(0);
     } else {
-        log('Unknown command. Available commands: launchChild, send, launchInline, watch, stop, scriptsPath, exit.');
+        log('Unknown command. Available commands: launchSubprocess, send, launchInline, watch, stop, scriptsPath, exit.');
     }
 });
 

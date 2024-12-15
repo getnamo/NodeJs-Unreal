@@ -45,7 +45,13 @@ struct FNodeJsProcessParams
 	bool bProcessInBytes = false;
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "NodeJs Params")
+	bool bDetectErrorsInPipe = false;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "NodeJs Params")
 	bool bSyncCLIParams = true;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "NodeJs Params")
+	bool bScriptLogsOnGamethread = true;
 };
 
 USTRUCT(BlueprintType)
@@ -64,6 +70,10 @@ struct FNodeJsScriptParams
 	//set to true if you want to dev
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "NodeJs Params")
 	bool bWatchFileForChanges = false;
+
+	//if true this will be included as a module (require), otherwise it will run in a separate child process
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "NodeJs Params")
+	bool bInlineLaunchScript = true;
 };
 
 
@@ -78,15 +88,23 @@ public:
 	UPROPERTY(BlueprintAssignable, Category = "NodeJs Events")
 	FSIOCEventJsonSignature OnEvent;
 
-	//Any console.log message will be sent here
+	//Any console.log message will be sent here (process.js logs are filtered out)
 	UPROPERTY(BlueprintAssignable, Category = "NodeJs Events")
 	FNodeConsoleLogSignature OnConsoleLog;
 
+	//Logs from the main process
 	UPROPERTY(BlueprintAssignable, Category = "NodeJs Events")
-	FNodeSciptBeginSignature OnScriptBegin;
+	FNodeConsoleLogSignature OnProcessScriptLog;
+
+	UPROPERTY(BlueprintAssignable, Category = "NodeJs Events")
+	FNodeScriptPathSignature OnScriptBegin;
 
 	UPROPERTY(BlueprintAssignable, Category = "NodeJs Events")
 	FNodeScriptPathSignature OnScriptEnd;
+
+	//Called after a script has unloaded, but before it begins allowing Unreal side cleanup if needed
+	UPROPERTY(BlueprintAssignable, Category = "NodeJs Events")
+	FNodeScriptPathSignature OnScriptReloaded;
 
 	UPROPERTY(BlueprintAssignable, Category = "NodeJs Events")
 	FNodeScriptErrorSignature OnScriptError;
@@ -96,11 +114,20 @@ public:
 
 	//Customize these for your script
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "NodeJs Parameters")
-	FNodeJsScriptParams ScriptParams;
+	FNodeJsScriptParams DefaultScriptParams;
 
 	//Core process parameters for establishing the process bridge
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "NodeJs Parameters")
 	FNodeJsProcessParams NodeJsProcessParams;
+
+	//Specify if you'd like the script to be watched in params in this call.
+	UFUNCTION(BlueprintCallable, Category = "NodeJs Functions")
+	bool StartScript(const FNodeJsScriptParams& ScriptParams);
+
+	//You can cancel a long running script here without stopping the full process
+	UFUNCTION(BlueprintCallable, Category = "NodeJs Functions")
+	bool StopScript(const FNodeJsScriptParams& ScriptParams);
+
 
 	UNodeComponent();
 
