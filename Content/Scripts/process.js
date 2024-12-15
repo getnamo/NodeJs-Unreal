@@ -1,13 +1,15 @@
 const { fork } = require('child_process');
 const path = require('path');
-// const IPC = require('ipc-event-emitter'); // Uncomment if IPC is needed
+const fs = require('fs');
 
 const activeChildren = {}; // Store active child processes by name
+const watchedScripts = {}; // Track watched scripts and their reload methods
+const launchedScripts = {}; // Track launched scripts with their methods
 let scriptRoot = '../../../../../';
 
 // Helper function to log messages with a category
 function log(message, category = 'Parent') {
-	console.log(`[${category}] ${message}`);
+	console.log(`~[${category}] ${message}`);
 }
 
 // Function to launch a child process for a given script
@@ -20,7 +22,7 @@ function launchChild(scriptName, scriptPath) {
 	}
 
 	try {
-		const child = fork(fullPath); // , { stdio: ['pipe', 'pipe', 'pipe', 'ipc'] });
+		const child = fork(fullPath);
 
 		child.on('message', (data) => {
 			log(`[${scriptName}] ${data}`, 'Child');
@@ -32,6 +34,7 @@ function launchChild(scriptName, scriptPath) {
 		});
 
 		activeChildren[scriptName] = { child }; // Store the child process
+		launchedScripts[fullPath] = { scriptName, method: 'child' }; // Track the launch method
 		log(`Launched child process for "${scriptName}" at "${scriptPath}".`);
 	} catch (error) {
 		log(`Failed to launch child process for "${scriptName}": ${error.message}`);
@@ -39,6 +42,7 @@ function launchChild(scriptName, scriptPath) {
 	}
 }
 
+//inline module
 function inlineChild(scriptName, scriptPath) {
 	const fullPath = path.resolve(scriptRoot + scriptPath + scriptName);
 	try {
@@ -52,6 +56,7 @@ function inlineChild(scriptName, scriptPath) {
 
 		// Re-require the module
 		const module = require(fullPath);
+		launchedScripts[fullPath] = { scriptName, method: 'inline' }; // Track the launch method
 		log(`Module "${scriptName}" reloaded successfully.`);
 		return module;
 	} catch (error) {
@@ -69,6 +74,61 @@ function sendMessageToChild(scriptName, message) {
 	}
 	activeChildren[scriptName].child.send(message);
 	log(`Sent message to child "${scriptName}": ${message}`);
+}
+
+// Function to watch a script file for changes
+function watchScript(scriptName, scriptPath) {
+	const debounceDuration = 100; //in ms
+    const fullPath = path.resolve(scriptRoot + scriptPath + scriptName);
+
+    if (watchedScripts[fullPath]) {
+        log(`"${scriptName}" is already being watched.`);
+        return;
+    }
+
+    // Ensure the script was previously launched
+    if (!launchedScripts[fullPath]) {
+        log(`"${scriptName}" has not been launched yet. Please launch it first.`);
+        return;
+    }
+
+    const { method } = launchedScripts[fullPath];
+    let reloadTimeout; // Timeout for debouncing
+
+    try {
+        const reload = () => {
+            log(`Detected change in "${scriptName}". Reloading...`);
+            log('reload ' + fullPath, 'Action');
+            if (method === 'inline') {
+                inlineChild(scriptName, scriptPath);
+            } else if (method === 'child') {
+                if (activeChildren[scriptName]) {
+                    log(`Restarting child process for "${scriptName}".`);
+                    activeChildren[scriptName].child.kill();
+                    delete activeChildren[scriptName];
+                }
+                launchChild(scriptName, scriptPath);
+            }
+        };
+
+        const watcher = fs.watch(fullPath, (eventType) => {
+            if (eventType === 'change') {
+                // Debounce the reload to prevent multiple triggers
+                if (reloadTimeout) {
+                    clearTimeout(reloadTimeout);
+                }
+                reloadTimeout = setTimeout(() => {
+                    reload();
+                }, debounceDuration); // 100ms debounce delay
+            }
+        });
+
+        watchedScripts[fullPath] = watcher;
+        log(`Watching "${scriptName}" for changes.`);
+    } catch (error) {
+        log(`Failed to watch "${scriptName}": ${error.message}`);
+        console.error(error);
+    }
 }
 
 // CLI input handling
@@ -99,6 +159,14 @@ process.stdin.on('data', (data) => {
 		} else {
 			log('Usage: launchInline <scriptName> <scriptPath>');
 		}
+	} else if (command === 'watch') {
+		const [scriptName, scriptPath] = args;
+
+		if (scriptName && scriptPath) {
+			watchScript(scriptName, scriptPath);
+		} else {
+			log('Usage: watch <scriptName> <scriptPath>');
+		}
 	} else if (command === 'scriptsPath') {
 		scriptRoot = args.join(' ');
 		log(`Updated scriptsRoot to: ${scriptRoot}`);
@@ -108,9 +176,13 @@ process.stdin.on('data', (data) => {
 			log(`Killing child process "${scriptName}".`);
 			child.kill();
 		}
+		for (const [filePath, watcher] of Object.entries(watchedScripts)) {
+			log(`Stopping watch on "${filePath}".`);
+			watcher.close();
+		}
 		process.exit(0);
 	} else {
-		log('Unknown command. Available commands: launchChild, send, launchInline, scriptsPath, exit.');
+		log('Unknown command. Available commands: launchChild, send, launchInline, watch, scriptsPath, exit.');
 	}
 });
 
