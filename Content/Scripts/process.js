@@ -22,6 +22,8 @@ function launchSubprocess(scriptName, scriptPath) {
 	}
 
 	try {
+		log('begin ' + fullPath, 'Action');
+
 		const child = fork(fullPath);
 
 		child.on('message', (data) => {
@@ -53,12 +55,18 @@ function inlineChild(scriptName, scriptPath) {
 		const resolvedPath = require.resolve(fullPath);
 
 		if (resolvedPath) {
+			//already exists? delete will happen
+			if(require.cache[resolvedPath])
+			{
+				// Signal stop
+				log('end ' + fullPath, 'Action');
+			}
+
 			// Remove the module from the require cache
 			delete require.cache[resolvedPath];
-
-			// Signal stop
-			log('end ' + fullPath, 'Action');
 		}
+
+		log('begin ' + fullPath, 'Action');
 
 		// Re-require the module
 		const module = require(fullPath);
@@ -195,7 +203,6 @@ process.stdin.on('data', (data) => {
         const [scriptName, scriptPath] = args;
         if (scriptName && scriptPath) {
 			const fullPath = path.resolve(scriptRoot + scriptPath + scriptName);
-			log('begin ' + fullPath, 'Action');
             launchSubprocess(scriptName, scriptPath);
         } else {
             log('Usage: launchSubprocess <scriptName> <scriptPath>');
@@ -213,7 +220,6 @@ process.stdin.on('data', (data) => {
 
         if (scriptName && scriptPath) {
 			const fullPath = path.resolve(scriptRoot + scriptPath + scriptName);
-			log('begin ' + fullPath, 'Action');
 			
             inlineChild(scriptName, scriptPath);
         } else {
