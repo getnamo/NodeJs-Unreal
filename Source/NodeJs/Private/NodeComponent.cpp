@@ -19,7 +19,7 @@ bool UNodeComponent::StartScript(const FNodeJsScriptParams& ScriptParams)
 
 	if (DefaultScriptParams.bWatchFileForChanges)
 	{
-		SendInput(FString::Printf(TEXT("%s %s %s"), TEX("watch"), *ScriptParams.Script, *ScriptParams.ScriptPathRoot));
+		SendInput(FString::Printf(TEXT("%s %s %s"), TEXT("watch"), *ScriptParams.Script, *ScriptParams.ScriptPathRoot));
 	}
 	return true;
 }
