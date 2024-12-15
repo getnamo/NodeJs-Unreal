@@ -52,6 +52,10 @@ struct FNodeJsProcessParams
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "NodeJs Params")
 	bool bScriptLogsOnGamethread = true;
+
+	//if false, you need to call StartScript directly
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "NodeJs Params")
+	bool bStartDefaultScriptOnBeginPlay = true;
 };
 
 USTRUCT(BlueprintType)
@@ -112,11 +116,11 @@ public:
 	UPROPERTY(BlueprintAssignable, Category = "Npm Events")
 	FNpmInstallResultSignature OnNpmDependenciesResolved;
 
-	//Customize these for your script
+	//CustoSmize these for your script
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "NodeJs Parameters")
 	FNodeJsScriptParams DefaultScriptParams;
 
-	//Core process parameters for establishing the process bridge
+	//Core process parameters for establishing the process bridge. Generally you don't need to change these params.
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "NodeJs Parameters")
 	FNodeJsProcessParams NodeJsProcessParams;
 
@@ -134,6 +138,9 @@ public:
 	void SyncCLIParams();
 
 protected:
+
+	UFUNCTION()
+	void BeginProcessingExtraHandler(const FString& StartUpState);
 
 	//UCLIProcessComponent overrides
 	virtual void StartProcess() override;

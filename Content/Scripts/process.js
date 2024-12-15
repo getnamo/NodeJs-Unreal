@@ -48,9 +48,12 @@ function launchSubprocess(scriptName, scriptPath) {
 }
 
 //inline module
-function inlineChild(scriptName, scriptPath) {
+function launchInline(scriptName, scriptPath) {
 	const fullPath = path.resolve(scriptRoot + scriptPath + scriptName);
 	try {
+
+		console.log('fullpath is: ', fullPath);
+
 		// Resolve the full path of the module
 		const resolvedPath = require.resolve(fullPath);
 
@@ -163,7 +166,7 @@ function watchScript(scriptName, scriptPath) {
             log(`Detected change in "${scriptName}". Reloading...`);
             log('reload ' + fullPath, 'Action');
             if (method === 'inline') {
-                inlineChild(scriptName, scriptPath);
+                launchInline(scriptName, scriptPath);
             } else if (method === 'child') {
                 if (activeChildren[scriptName]) {
                     log(`Restarting child process for "${scriptName}".`);
@@ -197,68 +200,81 @@ function watchScript(scriptName, scriptPath) {
 // CLI input handling
 process.stdin.on('data', (data) => {
     const input = data.toString().trim();
-    const [command, ...args] = input.split(' ');
+	const commands = input.split('\n');
 
-    if (command === 'launchSubprocess') {
-        const [scriptName, scriptPath] = args;
-        if (scriptName && scriptPath) {
-			const fullPath = path.resolve(scriptRoot + scriptPath + scriptName);
-            launchSubprocess(scriptName, scriptPath);
-        } else {
-            log('Usage: launchSubprocess <scriptName> <scriptPath>');
-        }
-    } else if (command === 'send') {
-        const [scriptName, ...messageParts] = args;
-        const message = messageParts.join(' ');
-        if (scriptName && message) {
-            sendMessageToChild(scriptName, message);
-        } else {
-            log('Usage: send <scriptName> <message>');
-        }
-    } else if (command === 'launchInline') {
-        const [scriptName, scriptPath] = args;
+	commands.forEach(commandSet =>{
+		const [command, ...args] = commandSet.split(' ');
 
-        if (scriptName && scriptPath) {
-			const fullPath = path.resolve(scriptRoot + scriptPath + scriptName);
-			
-            inlineChild(scriptName, scriptPath);
-        } else {
-            log('Usage: launchInline <scriptName> <scriptPath>');
-        }
-    } else if (command === 'watch') {
-        const [scriptName, scriptPath] = args;
+		//TODO: IPC-event-emitter setup for c++...
+		if(command === ''){
+			return;
+		}
 
-        if (scriptName && scriptPath) {
-            watchScript(scriptName, scriptPath);
-        } else {
-            log('Usage: watch <scriptName> <scriptPath>');
-        }
-    } else if (command === 'stop') {
-        const [scriptName] = args;
+		if (command === 'launchSubprocess') {
+			const [scriptName, scriptPath] = args;
+			if (scriptName && scriptPath) {
+				const fullPath = path.resolve(scriptRoot + scriptPath + scriptName);
+				launchSubprocess(scriptName, scriptPath);
+			} else {
+				log('Usage: launchSubprocess <scriptName> <scriptPath>');
+			}
+		} else if (command === 'send') {
+			const [scriptName, ...messageParts] = args;
+			const message = messageParts.join(' ');
+			if (scriptName && message) {
+				sendMessageToChild(scriptName, message);
+			} else {
+				log('Usage: send <scriptName> <message>');
+			}
+		} else if (command === 'launchInline') {
+			const [scriptName, scriptPath] = args;
 
-        if (scriptName) {
-            stopScript(scriptName);
-        } else {
-            log('Usage: stop <scriptName>');
-        }
-    } else if (command === 'scriptsPath') {
-        scriptRoot = args.join(' ');
-        log(`Updated scriptsRoot to: ${scriptRoot}`);
-    } else if (command === 'exit') {
-        log('Exiting parent script.');
-        for (const [scriptName, { child }] of Object.entries(activeChildren)) {
-            log(`Killing child process "${scriptName}".`);
-			log('end ' + scriptName, 'Action');
-            child.kill();
-        }
-        for (const [filePath, watcher] of Object.entries(watchedScripts)) {
-            log(`Stopping watch on "${filePath}".`);
-            watcher.close();
-        }
-        process.exit(0);
-    } else {
-        log('Unknown command. Available commands: launchSubprocess, send, launchInline, watch, stop, scriptsPath, exit.');
-    }
+			if (scriptName && scriptPath) {
+				const fullPath = path.resolve(scriptRoot + scriptPath + scriptName);
+
+				console.log('debug: ', args);
+				
+				launchInline(scriptName, scriptPath);
+			} else {
+				log('Usage: launchInline <scriptName> <scriptPath>');
+			}
+		} else if (command === 'watch') {
+			const [scriptName, scriptPath] = args;
+
+			console.log(scriptName, scriptPath);
+
+			if (scriptName && scriptPath) {
+				watchScript(scriptName, scriptPath);
+			} else {
+				log('Usage: watch <scriptName> <scriptPath>');
+			}
+		} else if (command === 'stop') {
+			const [scriptName] = args;
+
+			if (scriptName) {
+				stopScript(scriptName);
+			} else {
+				log('Usage: stop <scriptName>');
+			}
+		} else if (command === 'scriptsPath') {
+			scriptRoot = args.join(' ');
+			log(`Updated scriptsRoot to: ${scriptRoot}`);
+		} else if (command === 'exit') {
+			log('Exiting parent script.');
+			for (const [scriptName, { child }] of Object.entries(activeChildren)) {
+				log(`Killing child process "${scriptName}".`);
+				log('end ' + scriptName, 'Action');
+				child.kill();
+			}
+			for (const [filePath, watcher] of Object.entries(watchedScripts)) {
+				log(`Stopping watch on "${filePath}".`);
+				watcher.close();
+			}
+			process.exit(0);
+		} else {
+			log(`Unknown command: ${command}. Available commands: launchSubprocess, send, launchInline, watch, stop, scriptsPath, exit.`);
+		}
+	});
 });
 
 // Handle unexpected errors

@@ -15,12 +15,13 @@ bool UNodeComponent::StartScript(const FNodeJsScriptParams& ScriptParams)
 		LaunchMethod = TEXT("launchSubprocess");
 	}
 
-	SendInput(FString::Printf(TEXT("%s %s %s"), *LaunchMethod, *ScriptParams.Script, *ScriptParams.ScriptPathRoot));
+	SendInput(FString::Printf(TEXT("%s %s %s\n"), *LaunchMethod, *ScriptParams.Script, *ScriptParams.ScriptPathRoot));
 
-	if (DefaultScriptParams.bWatchFileForChanges)
+	//Delay watching by a frame
+	AsyncTask(ENamedThreads::GameThread, [this, ScriptParams]
 	{
-		SendInput(FString::Printf(TEXT("%s %s %s"), TEXT("watch"), *ScriptParams.Script, *ScriptParams.ScriptPathRoot));
-	}
+		SendInput(FString::Printf(TEXT("%s %s %s\n"), TEXT("watch"), *ScriptParams.Script, *ScriptParams.ScriptPathRoot));
+	});
 	return true;
 }
 
@@ -79,11 +80,22 @@ void UNodeComponent::StartProcess()
 }
 
 
+void UNodeComponent::BeginProcessingExtraHandler(const FString& StartUpState)
+{
+	if (HasBegunPlay() && NodeJsProcessParams.bStartDefaultScriptOnBeginPlay)
+	{
+		StartScript(DefaultScriptParams);
+	}
+}
+
 
 //UActorComponent overrides
 void UNodeComponent::InitializeComponent()
 {
 	Super::InitializeComponent();
+
+	//handle script at startup if relevant
+	OnBeginProcessing.AddDynamic(this, &UNodeComponent::BeginProcessingExtraHandler);
 
 	ProcessHandler->OnProcessOutput = [this](const int32 ProcessId, const FString& OutputString)
 	{
