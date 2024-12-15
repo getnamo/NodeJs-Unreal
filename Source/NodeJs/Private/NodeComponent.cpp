@@ -16,13 +16,20 @@ bool UNodeComponent::StartScript(const FNodeJsScriptParams& ScriptParams)
 	}
 
 	SendInput(FString::Printf(TEXT("%s %s %s"), *LaunchMethod, *ScriptParams.Script, *ScriptParams.ScriptPathRoot));
-	return false;
+
+	if (DefaultScriptParams.bWatchFileForChanges)
+	{
+		SendInput(FString::Printf(TEXT("%s %s %s"), TEX("watch"), *ScriptParams.Script, *ScriptParams.ScriptPathRoot));
+	}
+	return true;
 }
 
 bool UNodeComponent::StopScript(const FNodeJsScriptParams& ScriptParams)
 {
 	SendInput(FString::Printf(TEXT("%s %s"), TEXT("stop"), *ScriptParams.Script));
-	return false;
+
+
+	return true;
 }
 
 // Sets default values for this component's properties
@@ -77,8 +84,6 @@ void UNodeComponent::StartProcess()
 void UNodeComponent::InitializeComponent()
 {
 	Super::InitializeComponent();
-
-
 
 	ProcessHandler->OnProcessOutput = [this](const int32 ProcessId, const FString& OutputString)
 	{
