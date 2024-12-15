@@ -1,56 +1,106 @@
-// Import required modules
-const readline = require('readline');
+const { fork } = require('child_process');
+const path = require('path');
+const IPC = require('ipc-event-emitter');
 
-// Create a readline interface for CLI input/output
-const rl = readline.createInterface({
-  input: process.stdin,
-  output: process.stdout,
-  prompt: '> ', // Sets the prompt symbol
-});
+const activeChildren = {}; // Store active child processes by name
+let scriptRoot = './';
 
-// Function to process incoming messages
-function processInput(input) {
-  const trimmedInput = input.trim();
+// Function to launch a child process for a given script
+function launchChild(scriptName, scriptPath) {
+	const fullPath = path.resolve(scriptRoot + scriptPath + scriptName);
 
-  // Handle commands or input
-  if (trimmedInput === 'exit') {
-    console.log('Exiting the script. Goodbye!');
-    rl.close();
-    process.exit(0); // Ensure the process exits
-  } else {
-    console.log(`You entered: "${trimmedInput}"`);
+	if (activeChildren[scriptName]) {
+		console.log(`Child process for "${scriptName}" is already running.`);
+		return;
+	}
 
-    // Example: Respond to specific input
-    if (trimmedInput === 'hello') {
-      console.log('Hello to you too!');
-    } else if (trimmedInput === 'status') {
-      console.log('The script is running smoothly.');
-    } else {
-      console.log('Unknown command. Type "exit" to quit.');
-    }
-  }
+	//console.log('fullpath is', fullPath);
+
+	try {
+		const child = fork(fullPath);//, { stdio: ['pipe', 'pipe', 'pipe', 'ipc'] });
+
+		//console.log('ipc is', IPC);
+
+		//console.log('child is', child);
+
+		/*const ipc = IPC(child);
+
+		
+
+		// Handle child process events
+		ipc.on('log', (message) => {
+			console.log(`[Child ${scriptName} log]: ${message}`);
+		});
+
+		ipc.on('error', (error) => {
+			console.error(`[Child ${scriptName} error]: ${error}`);
+		});*/
+
+		child.on('message', data =>{
+			console.log(data);
+		});
+
+		child.on('exit', (code) => {
+			console.log(`Child "${scriptName}" exited with code ${code}`);
+			delete activeChildren[scriptName]; // Remove from active children
+		});
+
+		activeChildren[scriptName] = { child }// ipc };
+		console.log(`Launched child process for "${scriptName}" at "${scriptPath}".`);
+	} catch (error) {
+		console.error(`Failed to launch child process for "${scriptName}": ${error.message}`);
+		console.error(error);
+	}
 }
 
-// Display a welcome message
-console.log('Node.js CLI communication script is running.');
-console.log('Type a command or message. Type "exit" to quit.');
-rl.prompt();
+// Function to send input to a specific child
+function sendMessageToChild(scriptName, message) {
+	if (!activeChildren[scriptName]) {
+		console.error(`No active child process for "${scriptName}".`);
+		return;
+	}
+	activeChildren[scriptName].ipc.emit('input', message);
+}
 
-// Listen for input events
-rl.on('line', (input) => {
-  processInput(input);
-  rl.prompt(); // Re-display the prompt after processing input
+// CLI input handling
+process.stdin.on('data', (data) => {
+	const input = data.toString().trim();
+	const [command, ...args] = input.split(' ');
+
+	if (command === 'launch') {
+		const [scriptName, scriptPath] = args;
+		if (scriptName && scriptPath) {
+			launchChild(scriptName, scriptPath);
+		} else {
+			console.error('Usage: launch <scriptName> <scriptPath>');
+		}
+	} else if (command === 'send') {
+		const [scriptName, ...messageParts] = args;
+		const message = messageParts.join(' ');
+		if (scriptName && message) {
+			sendMessageToChild(scriptName, message);
+		} else {
+			console.error('Usage: send <scriptName> <message>');
+		}
+	} else if (command === 'scriptsPath'){
+		scriptRoot = args.join(' ');
+
+		console.log('updated scriptsRoot to: ' + scriptRoot);
+	}
+	else if (command === 'exit') {
+		console.log('Exiting parent script.');
+		for (const [scriptName, { child }] of Object.entries(activeChildren)) {
+			console.log(`Killing child process "${scriptName}".`);
+			child.kill();
+		}
+		process.exit(0);
+	} else {
+		console.error('Unknown command. Available commands: launch, send, exit.');
+	}
 });
 
-// Handle CTRL+C (SIGINT)
-rl.on('SIGINT', () => {
-  console.log('\nCaught interrupt signal (CTRL+C). Exiting.');
-  rl.close();
-  process.exit(0);
-});
-
-// Optional: Handle unexpected errors
+// Handle unexpected errors
 process.on('uncaughtException', (err) => {
-  console.error('Unhandled exception:', err);
-  process.exit(1); // Exit the script on error
+	console.error('Unhandled exception:', err);
+	process.exit(1);
 });

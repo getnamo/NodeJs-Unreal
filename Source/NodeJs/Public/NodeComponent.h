@@ -33,8 +33,12 @@ struct FNodeJsProcessParams
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "NodeJs Params")
 	FString ProcessScriptPath = TEXT("../../../Content/Scripts/");
 
-	//NB: not yet implemented
+	//Combine with ScriptPathRoot to have correct run path
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "NodeJs Params")
+	FString ProcessToProjectRoot= TEXT("../../../../../");
+
+	//NB: not yet implemented, so we don't expose it
+	//UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "NodeJs Params")
 	bool bShareMainProcess = false;
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "NodeJs Params")
@@ -56,6 +60,10 @@ struct FNodeJsScriptParams
 	//The script you want to run for this component
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "NodeJs Params")
 	FString Script = TEXT("script.js");
+
+	//set to true if you want to dev
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "NodeJs Params")
+	bool bWatchFileForChanges = false;
 };
 
 
