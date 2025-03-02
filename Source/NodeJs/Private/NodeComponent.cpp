@@ -47,6 +47,7 @@ void UNodeComponent::BeginPlay()
 
 void UNodeComponent::EndPlay(const EEndPlayReason::Type EndPlayReason)
 {
+	Super::EndPlay(EndPlayReason);
 	Cmd->bShouldStopMainScriptOnNoListeners = bStopMainScriptOnNoListeners;
 	if (bScriptIsRunning)
 	{
