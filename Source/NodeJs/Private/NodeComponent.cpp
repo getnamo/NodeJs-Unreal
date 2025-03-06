@@ -47,7 +47,6 @@ void UNodeComponent::BeginPlay()
 
 void UNodeComponent::EndPlay(const EEndPlayReason::Type EndPlayReason)
 {
-	Super::EndPlay(EndPlayReason);
 	Cmd->bShouldStopMainScriptOnNoListeners = bStopMainScriptOnNoListeners;
 	if (bScriptIsRunning)
 	{
@@ -59,6 +58,7 @@ void UNodeComponent::EndPlay(const EEndPlayReason::Type EndPlayReason)
 	}
 
 	Cmd->RemoveEventListener(Listener);
+	Super::EndPlay(EndPlayReason);
 }
 
 void UNodeComponent::LinkAndStartWrapperScript()
