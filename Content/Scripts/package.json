@@ -3,7 +3,7 @@
 	"version": "0.1.0",
 	"description": "dependencies for the nodeWrapper",
 	"dependencies": {
-		"express": "^4.21.2",
+		"express": "^4.22.1",
 		"ipc-event-emitter": "^2.0.2",
 		"socket.io": "^4.8.1"
 	}
