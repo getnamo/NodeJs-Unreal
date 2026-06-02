@@ -7,7 +7,7 @@ const ipc = require('ipc-event-emitter').default(process);
 const euclidean = (a, b) => ((a ** 2) + (b ** 2)) ** 0.5;
 
 ipc.on('myevent', (vars) => {
-	const c = euclidean(vars.x, vars.y);
+	const c = euclidean(vars.a, vars.b);
 	console.log('Got a request (a^2+b^2)^0.5: ' + c);
 
 	// emit the result back to Unreal
