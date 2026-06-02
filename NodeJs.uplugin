@@ -1,7 +1,7 @@
 {
 	"FileVersion": 3,
 	"Version": 1,
-	"VersionName": "1.8.0",
+	"VersionName": "2.0.0",
 	"FriendlyName": "NodeJs",
 	"Description": "Embed node.js as an unreal plugin.",
 	"Category": "Programming",
@@ -15,12 +15,6 @@
 	"Installed": false,
 	"Modules": [
 		{
-			"Name": "CommandLine",
-			"Type": "Runtime",
-			"LoadingPhase": "Default",
-			"WhitelistPlatforms": [ "Win64", "Mac", "Linux" ]
-		},
-		{
 			"Name": "NodeJs",
 			"Type": "Runtime",
 			"LoadingPhase": "Default",
@@ -29,7 +23,7 @@
 	],
 	"Plugins": [
 		{
-			"Name": "SocketIOClient",
+			"Name": "CLISystem",
 			"Enabled": true
 		}
 	]

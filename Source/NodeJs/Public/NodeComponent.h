@@ -3,9 +3,9 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "CLIProcessComponent.h"
 #include "Components/ActorComponent.h"
-#include "SocketIOClientComponent.h"
-#include "NodeCmd.h"
+#include "NodeFrameCodec.h"
 #include "NodeComponent.generated.h"
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FNodeSciptBeginSignature, int32, ProcessId);
@@ -14,26 +14,106 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FNodeScriptPathSignature, FString, S
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FNodeScriptErrorSignature, FString, ScriptRelativePath, FString, ErrorMessage);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FNpmInstallResultSignature, bool, bIsInstalled, FString, ErrorMessage);
 
+// Emitted when a script emits an event back to Unreal. JsonArgs is the JSON-encoded
+// args array; Binary carries the first interweaved binary buffer (empty if none).
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_ThreeParams(FNodeEventSignature, const FString&, EventName, const FString&, JsonArgs, const TArray<uint8>&, Binary);
+
+USTRUCT(BlueprintType)
+struct FNodeJsProcessParams
+{
+	GENERATED_USTRUCT_BODY()
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "NodeJs Params")
+	FString ProcessPath = TEXT("Plugins/NodeJs-Unreal/Source/ThirdParty/node/");
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "NodeJs Params")
+	FString ProcessName = TEXT("node");
+
+	//main entry point script that wraps the IPC bridge for communication handling
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "NodeJs Params")
+	FString ProcessScriptName = TEXT("process.js");
+
+	//This is relative to the process path
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "NodeJs Params")
+	FString ProcessScriptPath = TEXT("../../../Content/Scripts/");
+
+	//Combine with ScriptPathRoot to have correct run path
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "NodeJs Params")
+	FString ProcessToProjectRoot= TEXT("../../../../../");
+
+	//NB: not yet implemented, so we don't expose it
+	//UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "NodeJs Params")
+	bool bShareMainProcess = false;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "NodeJs Params")
+	bool bProcessInBytes = false;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "NodeJs Params")
+	bool bDetectErrorsInPipe = false;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "NodeJs Params")
+	bool bSyncCLIParams = true;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "NodeJs Params")
+	bool bScriptLogsOnGamethread = true;
+
+	//if false, you need to call StartScript directly
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "NodeJs Params")
+	bool bStartDefaultScriptOnBeginPlay = true;
+};
+
+USTRUCT(BlueprintType)
+struct FNodeJsScriptParams
+{
+	GENERATED_USTRUCT_BODY()
+
+	//Relative to Project Root
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "NodeJs Params")
+	FString ScriptPathRoot = TEXT("Content/Scripts/");
+
+	//The script you want to run for this component
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "NodeJs Params")
+	FString Script = TEXT("script.js");
+
+	//set to true if you want to dev
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "NodeJs Params")
+	bool bWatchFileForChanges = false;
+
+	//if true this will be included as a module (require), otherwise it will run in a separate child process
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "NodeJs Params")
+	bool bInlineLaunchScript = true;
+};
+
+
 UCLASS( ClassGroup=(Custom), meta=(BlueprintSpawnableComponent) )
-class NODEJS_API UNodeComponent : public UActorComponent
+class NODEJS_API UNodeComponent : public UCLIProcessComponent
 {
 	GENERATED_BODY()
 
 public:	
 
-	//Whenever your script emits an event that you've bound to it will emit here (unless bound to function)
+	//Whenever your script emits an event it will emit here. EventName is the event,
+	//JsonArgs is the JSON-encoded args array, Binary is the first interweaved buffer (if any).
 	UPROPERTY(BlueprintAssignable, Category = "NodeJs Events")
-	FSIOCEventJsonSignature OnEvent;
+	FNodeEventSignature OnEvent;
 
-	//Any console.log message will be sent here
+	//Any console.log message will be sent here (process.js logs are filtered out)
 	UPROPERTY(BlueprintAssignable, Category = "NodeJs Events")
 	FNodeConsoleLogSignature OnConsoleLog;
 
+	//Logs from the main process
 	UPROPERTY(BlueprintAssignable, Category = "NodeJs Events")
-	FNodeSciptBeginSignature OnScriptBegin;
+	FNodeConsoleLogSignature OnProcessScriptLog;
+
+	UPROPERTY(BlueprintAssignable, Category = "NodeJs Events")
+	FNodeScriptPathSignature OnScriptBegin;
 
 	UPROPERTY(BlueprintAssignable, Category = "NodeJs Events")
 	FNodeScriptPathSignature OnScriptEnd;
+
+	//Called after a script has unloaded, but before it begins allowing Unreal side cleanup if needed
+	UPROPERTY(BlueprintAssignable, Category = "NodeJs Events")
+	FNodeScriptPathSignature OnScriptReloaded;
 
 	UPROPERTY(BlueprintAssignable, Category = "NodeJs Events")
 	FNodeScriptErrorSignature OnScriptError;
@@ -41,150 +121,64 @@ public:
 	UPROPERTY(BlueprintAssignable, Category = "Npm Events")
 	FNpmInstallResultSignature OnNpmDependenciesResolved;
 
-	//If you enable script watching, hitting save on the script file with changes will call this function
-	UPROPERTY(BlueprintAssignable, Category = "Npm Events")
-	FNodeScriptPathSignature OnScriptChanged;
+	//CustoSmize these for your script
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "NodeJs Parameters")
+	FNodeJsScriptParams DefaultScriptParams;
 
-	//set this to true if you'd like the default script to start with the component
-	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = NodeJsDevProperties)
-	bool bRunDefaultScriptOnBeginPlay;
+	//Core process parameters for establishing the process bridge. Generally you don't need to change these params.
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "NodeJs Parameters")
+	FNodeJsProcessParams NodeJsProcessParams;
 
-	/** If enabled, your script file will be watched for any code changes and will call OnScriptChanged event*/
-	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = NodeJsDevProperties)
-	bool bWatchFileOnBeginPlay;
-
-	/** If you receive a module error that points to a dependency problem, try to re-install your package.json */
-	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = NodeJsAdvancedDevProperties)
-	bool bResolveDependenciesOnScriptModuleError;
-
-	/** Whether you'd like to try to re-run your script after installing dependencies*/
-	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = NodeJsAdvancedDevProperties)
-	bool bAutoRunOnNpmInstall;
-
-	/** Should we reload the script if it changed? Requires bRunDefaultScriptOnBeginPlay and bWatchFileOnBeginPlay to be true*/
-	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = NodeJsAdvancedDevProperties)
-	bool bReloadOnChange;
-
-	//This will cleanup our main script thread whenever there are no listeners. May slow down quick map travels. Default off.
-	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = NodeJsAdvancedDevProperties)
-	bool bStopMainScriptOnNoListeners;
-
-	//Forward binding of events before the script started?
-	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = NodeJsAdvancedDevProperties)
-	bool bAllowPreBinding;
-
-	//Relative to {project root}/Content/Scripts
-	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = NodeJsProperties)
-	FString DefaultScriptPath;
-
-	//we only allow one script per component
-	UPROPERTY(BlueprintReadOnly, Category = NodeJsProperties)
-	bool bScriptIsRunning;
-
-	//-1 if invalid
-	UPROPERTY(BlueprintReadOnly, Category = NodeJsProperties)
-	int32 ScriptId;
-
-	/** Run a different script than default */
+	//Specify if you'd like the script to be watched in params in this call.
 	UFUNCTION(BlueprintCallable, Category = "NodeJs Functions")
-	void RunScript(const FString& ScriptRelativePath);
+	bool StartScript(const FNodeJsScriptParams& ScriptParams);
 
-	/** If you didn't run it at begin play, call this function to run the default script */
+	//You can cancel a long running script here without stopping the full process
 	UFUNCTION(BlueprintCallable, Category = "NodeJs Functions")
-	void RunDefaultScript();
+	bool StopScript(const FNodeJsScriptParams& ScriptParams);
 
-	/** forcibly stop the script */
+	//Emit an event to your script. JsonArgs is a single JSON value (object/array/number/etc)
+	//that becomes the first argument of the script's ipc.on(EventName, (arg) => {...}).
+	//Leave ScriptName empty to target the component's default script.
 	UFUNCTION(BlueprintCallable, Category = "NodeJs Functions")
-	void StopScript();
+	void EmitEvent(const FString& EventName, const FString& JsonArgs, const FString& ScriptName = TEXT(""));
 
-	/** Checks your DefaultScriptPath package.json dependencies and installs them if needed */
+	//As EmitEvent, but interweaves a binary buffer delivered to the script as a trailing Buffer arg.
 	UFUNCTION(BlueprintCallable, Category = "NodeJs Functions")
-	void ResolveNpmDependencies();
+	void EmitEventWithBinary(const FString& EventName, const FString& JsonArgs, const TArray<uint8>& Binary, const FString& ScriptName = TEXT(""));
 
-	/**
-	* Emit an event with a JsonValue message
-	*
-	* @param Name		Event name
-	* @param Message	SIOJJsonValue
-	* @param Namespace	Namespace within socket.io
-	*/
-	UFUNCTION(BlueprintCallable, Category = "NodeJs Functions")
-	void Emit(const FString& EventName, USIOJsonValue* Message = nullptr, const FString& Namespace = FString(TEXT("/")));
+	//C++ convenience overload taking a structured json object as the single arg.
+	void EmitEvent(const FString& EventName, const TSharedRef<class FJsonObject>& JsonArg, const FString& ScriptName = TEXT(""));
 
-	/**
-	* Emit an event with a JsonValue message with a callback function defined by CallBackFunctionName
-	* This may not work due to ipc-event-emitter support, untested.
-	*
-	* @param Name					Event name
-	* @param Message				SIOJsonValue
-	* @param CallbackFunctionName	Name of the optional callback function with signature (String, SIOJsonValue)
-	* @param Target					CallbackFunction target object, typically self where this is called.
-	* @param Namespace				Namespace within socket.io
-	*/
-	UFUNCTION(BlueprintCallable, Category = "SocketIO Functions")
-	void EmitWithCallBack(const FString& EventName,
-			USIOJsonValue* Message = nullptr,
-			const FString& CallbackFunctionName = FString(""),
-			UObject* Target = nullptr,
-			const FString& Namespace = FString(TEXT("/")));
-
-	/**
-	* Bind an event, then respond to it with 'On' multi-cast delegate
-	*
-	* @param EventName	Event name
-	* @param Namespace	Optional namespace, defaults to default namespace
-	*/
-	UFUNCTION(BlueprintCallable, Category = "NodeJs Functions")
-	void BindEvent(const FString& EventName, const FString& Namespace = FString(TEXT("/")));
-
-	/**
-	* Bind an event to a function with the given name.
-	* Expects a String message signature which can be decoded from JSON into SIOJsonObject
-	*
-	* @param EventName		Event name
-	* @param FunctionName	The function that gets called when the event is received
-	* @param Target			Optional, defaults to owner. Change to delegate to another class.
-	*/
-	UFUNCTION(BlueprintCallable, Category = "NodeJs Functions")
-	void BindEventToFunction(const FString& EventName,
-			const FString& FunctionName,
-			UObject* Target,
-			const FString& Namespace = FString(TEXT("/")));
-
-	/** Get the path to the default script relative to project root */
-	FString ProjectRootRelativeScriptFolder();
-
-	UFUNCTION(BlueprintCallable, Category = "Npm Functions")
-	TArray<FString> PackageDependencies();
 
 	UNodeComponent();
-	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
 
-	//This should always be true, removed from BP exposure
-	//UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = NodeJsProperties)
-	bool bStartMainScriptIfNeededOnBeginPlay;
+	void SyncCLIParams();
 
 protected:
-	void LinkAndStartWrapperScript();
 
+	UFUNCTION()
+	void BeginProcessingExtraHandler(const FString& StartUpState);
+
+	//Decodes the framed byte stream coming back from process.js (runs on bg thread).
+	FNodeFrameCodec Decoder;
+
+	//Routes a single decoded frame to the relevant delegates.
+	void HandleFrame(uint8 Type, const FString& Header, const TArray<uint8>& Binary);
+
+	//Frame helpers towards process.js.
+	void SendControl(const FString& CommandLine);
+	void SendEventFrame(const FString& EventName, const FString& JsonArgs, const TArray<TArray<uint8>>& Buffers, const FString& ScriptName);
+
+	//UCLIProcessComponent overrides
+	virtual void StartProcess() override;
+
+	//UActorComponent overrides
+	virtual void InitializeComponent() override;
+	virtual void UninitializeComponent() override;
 	virtual void BeginPlay() override;
-
 	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
-
-	bool CallBPFunctionWithResponse(UObject* Target, const FString& FunctionName, TArray<TSharedPtr<FJsonValue>> Response);
-	bool CallBPFunctionWithMessage(UObject* Target, const FString& FunctionName, TSharedPtr<FJsonValue> Message);
+	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
 
 private:
-	TSharedPtr<FNodeCmd> Cmd;
-	TSharedPtr<FNodeEventListener> Listener;
-	TArray<TFunction<void()>> DelayedBindEvents;
-	TArray<FString> BoundEventNames;
-
-	//to track specific type of restart
-	bool bIsRestartStop;
-	bool bBeginPlayScriptHandled;
-
-	//append process id for mux routing in main script
-	FString FullEventName(const FString& EventName);
-	void UnbindAllScriptEvents();
 };

@@ -54,11 +54,8 @@ public class NodeJs : ModuleRules
 			{
 				"Core",
 				"Projects",
-				"CommandLine",
-				"SocketIOClient",
-				"SIOJson",
-				"Json",
-				"CoreUtility"
+				"CLISystem",
+				"Json"
 				// ... add other public dependencies that you statically link with here ...
 			}
 			);
