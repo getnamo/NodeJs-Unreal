@@ -27,6 +27,33 @@ const inlineEmitters = new Map(); // scriptName -> Set<emitter>
 const npmAttempted = new Set();   // scriptName guard against install loops
 
 let scriptRoot = '../../../../../';
+let autoResolveNpm = true;        // toggled from Unreal via the npmAutoResolve control
+
+// Resolve a script to a full path, preferring <projectRoot>/<scriptPath> and
+// falling back to the plugin's own Content/Scripts (where process.js lives), so
+// the bundled examples run without copying them into the project.
+function resolveScriptFullPath(scriptName, scriptPath) {
+	const primary = path.resolve(scriptRoot + scriptPath + scriptName);
+	if (fs.existsSync(primary)) return primary;
+
+	// __dirname == <plugin>/Content/Scripts ; step up to <plugin> then re-apply scriptPath.
+	const fallback = path.resolve(__dirname, '..', '..', scriptPath + scriptName);
+	if (fs.existsSync(fallback)) return fallback;
+
+	return primary; // default to the project path so messages point where users expect
+}
+
+// Walk up from a script's folder to the nearest package.json (npm install target).
+function findPackageDir(startDir) {
+	let dir = startDir;
+	for (let i = 0; i < 8; i++) {
+		if (fs.existsSync(path.join(dir, 'package.json'))) return dir;
+		const parent = path.dirname(dir);
+		if (parent === dir) break;
+		dir = parent;
+	}
+	return startDir;
+}
 
 // ---------------------------------------------------------------------------
 // Frame protocol
@@ -189,21 +216,46 @@ function missingModuleFrom(message) {
 }
 
 function resolveNpmAndRelaunch(scriptName, scriptPath, method, errMessage) {
+	if (!autoResolveNpm) {
+		return false;
+	}
 	const moduleName = missingModuleFrom(errMessage);
 	if (!moduleName || npmAttempted.has(scriptName)) {
 		return false;
 	}
+
+	// Only auto-install when the missing module is declared in the script's package.json.
+	const fullPath = resolveScriptFullPath(scriptName, scriptPath);
+	const pkgDir = findPackageDir(path.dirname(fullPath));
+	const pkgPath = path.join(pkgDir, 'package.json');
+
+	let listed = false;
+	try {
+		if (fs.existsSync(pkgPath)) {
+			const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf8'));
+			listed = !!(
+				(pkg.dependencies && pkg.dependencies[moduleName]) ||
+				(pkg.devDependencies && pkg.devDependencies[moduleName])
+			);
+		}
+	} catch (e) {
+		plog(`Could not read ${pkgPath}: ${e.message}`);
+	}
+
+	if (!listed) {
+		plog(`Missing module '${moduleName}' is not listed in ${pkgPath}; not auto-installing.`);
+		sendNpmResult(false, `Missing module '${moduleName}' is not in package.json. Add it to enable auto-resolve.`);
+		return false;
+	}
+
 	npmAttempted.add(scriptName);
-
-	const cwd = path.resolve(scriptRoot + scriptPath);
 	const npmCli = path.join(path.dirname(process.execPath), 'node_modules', 'npm', 'bin', 'npm-cli.js');
-
-	plog(`Missing module '${moduleName}', running npm install in ${cwd} ...`);
+	plog(`Installing '${moduleName}' (npm install in ${pkgDir}) ...`);
 
 	const npm = childProcess.execFile(
 		process.execPath,
 		[npmCli, 'install'],
-		{ cwd },
+		{ cwd: pkgDir },
 		(error, stdout, stderr) => {
 			if (error) {
 				sendNpmResult(false, (stderr || error.message || '').toString().trim());
@@ -227,7 +279,7 @@ function resolveNpmAndRelaunch(scriptName, scriptPath, method, errMessage) {
 // ---------------------------------------------------------------------------
 
 function launchSubprocess(scriptName, scriptPath) {
-	const fullPath = path.resolve(scriptRoot + scriptPath + scriptName);
+	const fullPath = resolveScriptFullPath(scriptName, scriptPath);
 
 	if (activeChildren[scriptName]) {
 		plog(`Child process for "${scriptName}" is already running.`);
@@ -281,7 +333,7 @@ function launchSubprocess(scriptName, scriptPath) {
 }
 
 function launchInline(scriptName, scriptPath) {
-	const fullPath = path.resolve(scriptRoot + scriptPath + scriptName);
+	const fullPath = resolveScriptFullPath(scriptName, scriptPath);
 
 	// Clear any prior inline emitters for this script so reload re-binds cleanly.
 	inlineEmitters.delete(scriptName);
@@ -361,7 +413,7 @@ function sendMessageToChild(scriptName, message) {
 
 function watchScript(scriptName, scriptPath) {
 	const debounceDuration = 100;
-	const fullPath = path.resolve(scriptRoot + scriptPath + scriptName);
+	const fullPath = resolveScriptFullPath(scriptName, scriptPath);
 
 	if (watchedScripts[fullPath]) {
 		return;
@@ -444,6 +496,10 @@ function handleControl(commandLine) {
 		case 'scriptsPath': {
 			scriptRoot = args.join(' ');
 			plog(`Updated scriptRoot to: ${scriptRoot}`);
+			break;
+		}
+		case 'npmAutoResolve': {
+			autoResolveNpm = (args[0] === '1' || args[0] === 'true');
 			break;
 		}
 		case 'reloadComplete': {

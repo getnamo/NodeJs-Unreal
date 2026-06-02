@@ -165,6 +165,24 @@ async function run() {
 		console.error(`  perf: ${m.parsed.args[0].mb} MB emitted in ${m.parsed.args[0].ms} ms`);
 	}
 
+	// ---- 5) npm auto-resolve: missing module not listed in package.json ----
+	send(controlFrame('launchInline needsMissing.js test' + path.sep));
+	{
+		const m = await waitFor(m => m.type === T_NPM, 5000, 'npm result');
+		const npm = JSON.parse(m.header);
+		check(npm.installed === false && /not in package\.json/i.test(npm.error), 'npm auto-resolve: unlisted module warned, not installed');
+	}
+
+	// ---- 6) path fallback: project root lacks the script -> plugin Content/Scripts ----
+	send(controlFrame('scriptsPath ' + path.join('C:', 'nonexistent_root_' + 'xyz') + path.sep));
+	send(controlFrame('launchInline examples' + path.sep + 'adder.js Content' + path.sep + 'Scripts' + path.sep));
+	await waitFor(m => m.type === T_LOG && m.header.includes('started'), 5000, 'fallback adder started');
+	send(eventFrame('examples' + path.sep + 'adder.js', 'myevent', [{ x: 8, y: 15 }]));
+	{
+		const m = await waitFor(m => m.type === T_EVENT && m.parsed && m.parsed.name === 'result', 5000, 'fallback result');
+		check(Math.abs(m.parsed.args[0] - 17) < 1e-9, 'path fallback: script found under plugin Content/Scripts');
+	}
+
 	send(controlFrame('exit'));
 	await sleep(200);
 }

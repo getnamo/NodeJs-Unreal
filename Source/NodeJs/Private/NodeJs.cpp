@@ -7,6 +7,8 @@
 
 #define LOCTEXT_NAMESPACE "FNodeJsModule"
 
+DEFINE_LOG_CATEGORY(LogNodeJs);
+
 void FNodeJsModule::StartupModule()
 {
 	// This code will execute after your module is loaded into memory; the exact timing is specified in the .uplugin file per-module

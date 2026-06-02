@@ -51,6 +51,16 @@ struct FNodeJsProcessParams
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "NodeJs Params")
 	bool bDetectErrorsInPipe = false;
 
+	//Dump script errors to the Output Log (in addition to the OnScriptError event) so they're
+	//visible without having to wire the event up. Uses the LogNodeJs category.
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "NodeJs Params")
+	bool bLogScriptErrorsToOutput = true;
+
+	//If a script fails on a missing npm module that IS listed in your Scripts package.json,
+	//auto-run npm install in that folder and reload the script.
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "NodeJs Params")
+	bool bAutoResolveNpmDependencies = true;
+
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "NodeJs Params")
 	bool bSyncCLIParams = true;
 

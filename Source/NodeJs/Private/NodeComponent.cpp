@@ -9,6 +9,9 @@
 
 bool UNodeComponent::StartScript(const FNodeJsScriptParams& ScriptParams)
 {
+	//Push current options before launching so an early script error resolves correctly.
+	SendControl(FString::Printf(TEXT("npmAutoResolve %d"), NodeJsProcessParams.bAutoResolveNpmDependencies ? 1 : 0));
+
 	FString LaunchMethod = TEXT("launchInline");
 	if (!ScriptParams.bInlineLaunchScript)
 	{
@@ -292,6 +295,12 @@ void UNodeComponent::HandleFrame(uint8 Type, const FString& Header, const TArray
 		{
 			Message = Header;
 		}
+
+		if (NodeJsProcessParams.bLogScriptErrorsToOutput)
+		{
+			UE_LOG(LogNodeJs, Error, TEXT("[%s] %s"), *ScriptPath, *Message);
+		}
+
 		AsyncTask(ENamedThreads::GameThread, [this, ScriptPath, Message]
 		{
 			OnScriptError.Broadcast(ScriptPath, Message);

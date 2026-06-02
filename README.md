@@ -169,8 +169,11 @@ Works since v0.5, just make sure to add the folder where your project Scripts ar
 
 ## Usage Notes
 
+#### Where scripts are loaded from
+Your script (`Default Script Params -> Script`, relative to `Script Path Root`, default `Content/Scripts/`) is looked up in your **project's** `Content/Scripts` first, and if not found there it falls back to the **plugin's** own `Content/Scripts`. That's why the bundled `examples/*.js` run without copying them into your project.
+
 #### Errors
-If you write an error in your script, it will spit it out in your output log. Hitting save and re-running the component will re-run the script.
+Script errors are emitted on the `OnScriptError` event and, by default, also dumped to the Output Log under the `LogNodeJs` category — so you can see them without wiring anything up. Turn this off with `Node Js Process Params -> Log Script Errors To Output`. Hitting save while watching re-runs the script.
 
 ![error](https://i.imgur.com/hh03jnD.png)
 
