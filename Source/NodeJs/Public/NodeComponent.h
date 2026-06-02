@@ -5,7 +5,7 @@
 #include "CoreMinimal.h"
 #include "CLIProcessComponent.h"
 #include "Components/ActorComponent.h"
-#include "SocketIOClientComponent.h"
+#include "NodeFrameCodec.h"
 #include "NodeComponent.generated.h"
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FNodeSciptBeginSignature, int32, ProcessId);
@@ -13,6 +13,10 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FNodeConsoleLogSignature, FString, L
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FNodeScriptPathSignature, FString, ScriptRelativePath);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FNodeScriptErrorSignature, FString, ScriptRelativePath, FString, ErrorMessage);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FNpmInstallResultSignature, bool, bIsInstalled, FString, ErrorMessage);
+
+// Emitted when a script emits an event back to Unreal. JsonArgs is the JSON-encoded
+// args array; Binary carries the first interweaved binary buffer (empty if none).
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_ThreeParams(FNodeEventSignature, const FString&, EventName, const FString&, JsonArgs, const TArray<uint8>&, Binary);
 
 USTRUCT(BlueprintType)
 struct FNodeJsProcessParams
@@ -88,9 +92,10 @@ class NODEJS_API UNodeComponent : public UCLIProcessComponent
 
 public:	
 
-	//Whenever your script emits an event that you've bound to it will emit here (unless bound to function)
+	//Whenever your script emits an event it will emit here. EventName is the event,
+	//JsonArgs is the JSON-encoded args array, Binary is the first interweaved buffer (if any).
 	UPROPERTY(BlueprintAssignable, Category = "NodeJs Events")
-	FSIOCEventJsonSignature OnEvent;
+	FNodeEventSignature OnEvent;
 
 	//Any console.log message will be sent here (process.js logs are filtered out)
 	UPROPERTY(BlueprintAssignable, Category = "NodeJs Events")
@@ -132,6 +137,19 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "NodeJs Functions")
 	bool StopScript(const FNodeJsScriptParams& ScriptParams);
 
+	//Emit an event to your script. JsonArgs is a single JSON value (object/array/number/etc)
+	//that becomes the first argument of the script's ipc.on(EventName, (arg) => {...}).
+	//Leave ScriptName empty to target the component's default script.
+	UFUNCTION(BlueprintCallable, Category = "NodeJs Functions")
+	void EmitEvent(const FString& EventName, const FString& JsonArgs, const FString& ScriptName = TEXT(""));
+
+	//As EmitEvent, but interweaves a binary buffer delivered to the script as a trailing Buffer arg.
+	UFUNCTION(BlueprintCallable, Category = "NodeJs Functions")
+	void EmitEventWithBinary(const FString& EventName, const FString& JsonArgs, const TArray<uint8>& Binary, const FString& ScriptName = TEXT(""));
+
+	//C++ convenience overload taking a structured json object as the single arg.
+	void EmitEvent(const FString& EventName, const TSharedRef<class FJsonObject>& JsonArg, const FString& ScriptName = TEXT(""));
+
 
 	UNodeComponent();
 
@@ -141,6 +159,16 @@ protected:
 
 	UFUNCTION()
 	void BeginProcessingExtraHandler(const FString& StartUpState);
+
+	//Decodes the framed byte stream coming back from process.js (runs on bg thread).
+	FNodeFrameCodec Decoder;
+
+	//Routes a single decoded frame to the relevant delegates.
+	void HandleFrame(uint8 Type, const FString& Header, const TArray<uint8>& Binary);
+
+	//Frame helpers towards process.js.
+	void SendControl(const FString& CommandLine);
+	void SendEventFrame(const FString& EventName, const FString& JsonArgs, const TArray<TArray<uint8>>& Buffers, const FString& ScriptName);
 
 	//UCLIProcessComponent overrides
 	virtual void StartProcess() override;

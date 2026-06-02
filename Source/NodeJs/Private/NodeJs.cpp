@@ -3,7 +3,6 @@
 #include "NodeJs.h"
 #include "Core.h"
 #include "Modules/ModuleManager.h"
-#include "CULambdaRunnable.h"
 #include "Interfaces/IPluginManager.h"
 
 #define LOCTEXT_NAMESPACE "FNodeJsModule"

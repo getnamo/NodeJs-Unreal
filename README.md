@@ -83,12 +83,9 @@ In your component properties set the name of the script you wish to run e.g. ```
 
 ![set script](https://i.imgur.com/xalQplZ.png)
 
-### Command line arguments
+### Passing data to scripts
 
-Command line arguments are supported, just add them to the script path, separated by "|".
-Arguments which contain spaces should be enclosed in double quotes. Example:
-
-`myscript.js|--parameter=value "--parameter-with-spaces=value with spaces"` 
+Since v2.0.0 data is passed to scripts via events rather than command-line arguments: bind ```OnScriptBegin``` and call ```Emit Event``` (see the adder below). This keeps a live two-way channel open instead of one-shot launch args.
 
 Now let's look at a basic script
 
@@ -144,13 +141,25 @@ ipc.on('myevent', (vars) => {
 console.log('started');
 ```
 
-On the blueprint side, our scripts start on begin play (a toggleable property on the node component) and has an event called ```OnScriptBegin```. We use that event to bind to the ```result``` event first and then emit a vector2d with x and y float values and convert it to a SIOJsonValue, this will autoconvert to a json object in your script side.
+On the blueprint side, our scripts start on begin play (a toggleable property on the node component) and there is an event called ```OnScriptBegin```. Use that event to know the script is ready, then call ```Emit Event``` with the event name ```myevent``` and a JSON string argument, e.g. ```{"x":3,"y":4}```. This JSON arrives in your script as the object passed to your ```ipc.on('myevent', (vars) => ...)``` handler.
 
-![bp comms](https://i.imgur.com/teMzuPz.png)
+```
+Event OnScriptBegin --> Emit Event (EventName="myevent", JsonArgs="{\"x\":3,\"y\":4}")
+```
 
-When the script emits the ```result``` event, it will return to our component ```OnEvent``` event (you can also bind directly to a function see https://github.com/getnamo/socketio-client-ue4#binding-events-to-functions for example syntax). In the example above we simply re-encode the message to json and print to string.
+When the script emits the ```result``` event, it returns to your component's ```OnEvent``` event. ```OnEvent``` gives you three values:
+
+- ```EventName``` — the emitted event name (e.g. ```result```)
+- ```JsonArgs``` — the args as a JSON array string (e.g. ```[5]```); parse it with any JSON utility
+- ```Binary``` — a ```TArray<uint8>``` carrying the first interweaved binary buffer, if any (empty otherwise)
 
 That's the basics! There are some other events and functions for e.g. starting/stopping and getting notifications of those states, but largely anything else will be in your node.js script side.
+
+#### Sending binary
+
+To interweave raw bytes, use ```Emit Event With Binary``` from Unreal (the buffer arrives in your script as a trailing Node ```Buffer``` argument), or from your script emit a ```Buffer``` directly: ```ipc.emit('frame', { meta: 1 }, myBuffer)```. On the Unreal side the bytes arrive on ```OnEvent```'s ```Binary``` parameter. Binary travels natively (no base64) so it's suitable for image/audio streaming. See ```Content/Scripts/examples/perfStream.js``` for a throughput example and ```cubeSine.js``` for an async actor-driving demo.
+
+> The bundled ```ipc-event-emitter``` (in ```Content/Scripts/node_modules```) is wire-compatible with the npm package, so the ```require('ipc-event-emitter').default(process)``` one-liner works out of the box with no ```npm install``` — for both inline and subprocess scripts.
 
 ## Packaging
 
@@ -190,6 +199,6 @@ This is supported, just download https://github.com/getnamo/NodeJs-Unreal/releas
 
 Current builds are Win64 only.
 
-Communication to embeded node.exe takes place internally via socket.io protocol with tcp. Comms and scripts run on background threads with callbacks on game thread (one subprocess for each script). This means nothing blocks while the scripts run, but sub-tick communcation latency is not possible as each message roundtrip will take at least one game tick. e.g. sending a message to your script on this tick will usually result in a callback on next tick.
+Since v2.0.0 communication to the embedded node.exe takes place over the process stdin/stdout pipe using a self-delimiting binary frame protocol (built on the [CLISystem](https://github.com/getnamo/CLISystem-Unreal) plugin) — there is no longer any socket.io/TCP server. Logs, events and raw binary interweave on the one stream. Comms and scripts run on background threads with callbacks marshalled to the game thread, so nothing blocks while scripts run, but sub-tick latency is not guaranteed; a message roundtrip will usually take at least one game tick.
 
-Very large bandwidth may become an issue (e.g. feeding image data each tick), but hasn't been tested and there are some optimizations that can be used.
+Binary is carried natively (no base64), so feeding large/image data is reasonable, though very high per-tick bandwidth should still be profiled for your use case.

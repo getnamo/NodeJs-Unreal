@@ -1,10 +1,6 @@
 {
-	"name": "nodeWrapper-nodejs-unreal",
-	"version": "0.1.0",
-	"description": "dependencies for the nodeWrapper",
-	"dependencies": {
-		"express": "^4.21.2",
-		"ipc-event-emitter": "^2.0.2",
-		"socket.io": "^4.8.1"
-	}
+	"name": "nodejs-unreal-scripts",
+	"version": "2.0.0",
+	"description": "NodeJs-Unreal process bridge. ipc-event-emitter is bundled locally (node_modules/ipc-event-emitter); add your own script dependencies here.",
+	"dependencies": {}
 }
