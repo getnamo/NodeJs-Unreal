@@ -147,6 +147,10 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "NodeJs Functions")
 	bool StopScript(const FNodeJsScriptParams& ScriptParams);
 
+	//Runs npm install for the package.json nearest to this script. Result arrives on OnNpmDependenciesResolved.
+	UFUNCTION(BlueprintCallable, Category = "Npm Functions")
+	void ResolveNpmDependencies(const FNodeJsScriptParams& ScriptParams);
+
 	//Emit an event to your script. JsonArgs is a single JSON value (object/array/number/etc)
 	//that becomes the first argument of the script's ipc.on(EventName, (arg) => {...}).
 	//Leave ScriptName empty to target the component's default script.

@@ -38,6 +38,11 @@ bool UNodeComponent::StopScript(const FNodeJsScriptParams& ScriptParams)
 	return true;
 }
 
+void UNodeComponent::ResolveNpmDependencies(const FNodeJsScriptParams& ScriptParams)
+{
+	SendControl(FString::Printf(TEXT("npmInstall %s %s"), *ScriptParams.Script, *ScriptParams.ScriptPathRoot));
+}
+
 //~ Event emit -------------------------------------------------------------
 
 void UNodeComponent::EmitEvent(const FString& EventName, const FString& JsonArgs, const FString& ScriptName)

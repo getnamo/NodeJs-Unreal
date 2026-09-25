@@ -117,7 +117,7 @@ async function run() {
 	// ---- 1) inline adder ----
 	send(controlFrame('launchInline adder.js examples' + path.sep));
 	await waitFor(m => m.type === T_LOG && m.header.includes('started'), 5000, 'inline adder started');
-	send(eventFrame('adder.js', 'myevent', [{ x: 3, y: 4 }]));
+	send(eventFrame('adder.js', 'myevent', [{ a: 3, b: 4 }]));
 	{
 		const m = await waitFor(m => m.type === T_EVENT && m.parsed && m.parsed.name === 'result', 5000, 'inline result');
 		check(Math.abs(m.parsed.args[0] - 5) < 1e-9, 'inline adder: euclidean(3,4) == 5');
@@ -126,7 +126,7 @@ async function run() {
 	// ---- 2) subprocess adder ----
 	send(controlFrame('launchSubprocess adder.js examples' + path.sep));
 	await waitFor(m => m.type === T_LOG && m.header.includes('started'), 5000, 'subprocess adder started');
-	send(eventFrame('adder.js', 'myevent', [{ x: 5, y: 12 }]));
+	send(eventFrame('adder.js', 'myevent', [{ a: 5, b: 12 }]));
 	{
 		const m = await waitFor(m => m.type === T_EVENT && m.parsed && m.parsed.name === 'result', 5000, 'subprocess result');
 		check(Math.abs(m.parsed.args[0] - 13) < 1e-9, 'subprocess adder: euclidean(5,12) == 13');
@@ -173,11 +173,25 @@ async function run() {
 		check(npm.installed === false && /not in package\.json/i.test(npm.error), 'npm auto-resolve: unlisted module warned, not installed');
 	}
 
+	// ---- 5b) manual npm install (ResolveNpmDependencies) against a throwaway package.json ----
+	{
+		const fs = require('fs');
+		const os = require('os');
+		const tmpRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'nue-npm-'));
+		fs.writeFileSync(path.join(tmpRoot, 'package.json'), JSON.stringify({ name: 'nue-npm-test', version: '1.0.0', private: true, dependencies: {} }));
+		send(controlFrame('scriptsPath ' + tmpRoot + path.sep));
+		send(controlFrame('npmInstall any.js ./'));
+		const m = await waitFor(m => m.type === T_NPM, 60000, 'manual npm install result');
+		const npm = JSON.parse(m.header);
+		check(npm.installed === true, 'npm manual install: bundled npm ran install successfully' + (npm.error ? ` (${npm.error})` : ''));
+		try { fs.rmSync(tmpRoot, { recursive: true, force: true }); } catch (e) { /* */ }
+	}
+
 	// ---- 6) path fallback: project root lacks the script -> plugin Content/Scripts ----
 	send(controlFrame('scriptsPath ' + path.join('C:', 'nonexistent_root_' + 'xyz') + path.sep));
 	send(controlFrame('launchInline examples' + path.sep + 'adder.js Content' + path.sep + 'Scripts' + path.sep));
 	await waitFor(m => m.type === T_LOG && m.header.includes('started'), 5000, 'fallback adder started');
-	send(eventFrame('examples' + path.sep + 'adder.js', 'myevent', [{ x: 8, y: 15 }]));
+	send(eventFrame('examples' + path.sep + 'adder.js', 'myevent', [{ a: 8, b: 15 }]));
 	{
 		const m = await waitFor(m => m.type === T_EVENT && m.parsed && m.parsed.name === 'result', 5000, 'fallback result');
 		check(Math.abs(m.parsed.args[0] - 17) < 1e-9, 'path fallback: script found under plugin Content/Scripts');

@@ -249,8 +249,23 @@ function resolveNpmAndRelaunch(scriptName, scriptPath, method, errMessage) {
 	}
 
 	npmAttempted.add(scriptName);
+	plog(`Installing '${moduleName}' ...`);
+	runNpmInstall(pkgDir, (installed) => {
+		if (!installed) return;
+		plog(`npm install complete, relaunching '${scriptName}'.`);
+		if (method === 'inline') {
+			launchInline(scriptName, scriptPath);
+		} else {
+			launchSubprocess(scriptName, scriptPath);
+		}
+	});
+	return true;
+}
+
+// Run the bundled npm's `install` in pkgDir, report via an NPM frame, then call onDone(installed).
+function runNpmInstall(pkgDir, onDone) {
 	const npmCli = path.join(path.dirname(process.execPath), 'node_modules', 'npm', 'bin', 'npm-cli.js');
-	plog(`Installing '${moduleName}' (npm install in ${pkgDir}) ...`);
+	plog(`npm install in ${pkgDir} ...`);
 
 	const npm = childProcess.execFile(
 		process.execPath,
@@ -259,19 +274,25 @@ function resolveNpmAndRelaunch(scriptName, scriptPath, method, errMessage) {
 		(error, stdout, stderr) => {
 			if (error) {
 				sendNpmResult(false, (stderr || error.message || '').toString().trim());
+				if (onDone) onDone(false);
 				return;
 			}
 			sendNpmResult(true, '');
-			plog(`npm install complete, relaunching '${scriptName}'.`);
-			if (method === 'inline') {
-				launchInline(scriptName, scriptPath);
-			} else {
-				launchSubprocess(scriptName, scriptPath);
-			}
+			if (onDone) onDone(true);
 		}
 	);
 	npm.on('error', (e) => sendNpmResult(false, e.message));
-	return true;
+}
+
+// Manual resolve (Unreal ResolveNpmDependencies): install the package.json nearest the script.
+function resolveNpmForScript(scriptName, scriptPath) {
+	const fullPath = resolveScriptFullPath(scriptName, scriptPath);
+	const pkgDir = findPackageDir(path.dirname(fullPath));
+	if (!fs.existsSync(path.join(pkgDir, 'package.json'))) {
+		sendNpmResult(false, `No package.json found for ${fullPath}`);
+		return;
+	}
+	runNpmInstall(pkgDir);
 }
 
 // ---------------------------------------------------------------------------
@@ -496,6 +517,12 @@ function handleControl(commandLine) {
 		case 'scriptsPath': {
 			scriptRoot = args.join(' ');
 			plog(`Updated scriptRoot to: ${scriptRoot}`);
+			break;
+		}
+		case 'npmInstall': {
+			const [scriptName, scriptPath] = args;
+			if (scriptName && scriptPath) resolveNpmForScript(scriptName, scriptPath);
+			else plog('Usage: npmInstall <scriptName> <scriptPath>');
 			break;
 		}
 		case 'npmAutoResolve': {

@@ -131,7 +131,7 @@ const euclidean = (a, b) =>{
 
 //Listen to 'myevent' event
 ipc.on('myevent', (vars) => {
-	let c = euclidean(vars.x, vars.y);
+	let c = euclidean(vars.a, vars.b);
 	console.log('Got a request (a^2+b^2)^0.5: ' + c);
 
 	//emit result back as a 'result' event
@@ -141,10 +141,10 @@ ipc.on('myevent', (vars) => {
 console.log('started');
 ```
 
-On the blueprint side, our scripts start on begin play (a toggleable property on the node component) and there is an event called ```OnScriptBegin```. Use that event to know the script is ready, then call ```Emit Event``` with the event name ```myevent``` and a JSON string argument, e.g. ```{"x":3,"y":4}```. This JSON arrives in your script as the object passed to your ```ipc.on('myevent', (vars) => ...)``` handler.
+On the blueprint side, our scripts start on begin play (a toggleable property on the node component) and there is an event called ```OnScriptBegin```. Use that event to know the script is ready, then call ```Emit Event``` with the event name ```myevent``` and a JSON string argument, e.g. ```{"a":3,"b":4}```. This JSON arrives in your script as the object passed to your ```ipc.on('myevent', (vars) => ...)``` handler.
 
 ```
-Event OnScriptBegin --> Emit Event (EventName="myevent", JsonArgs="{\"x\":3,\"y\":4}")
+Event OnScriptBegin --> Emit Event (EventName="myevent", JsonArgs="{\"a\":3,\"b\":4}")
 ```
 
 When the script emits the ```result``` event, it returns to your component's ```OnEvent``` event. ```OnEvent``` gives you three values:
@@ -185,7 +185,7 @@ Basically keep your script's ```package.json``` up to date with the required dep
 
 ![properties](https://i.imgur.com/s5o983w.png)
 
-You can disable this auto-resolving and auto-run on npm install via the node component properties. Then you can resolve Npm dependencies at your own time with the node component function ```Resolve Npm Dependencies```.
+You can disable this auto-resolving and auto-run on npm install via `Node Js Process Params -> Auto Resolve Npm Dependencies`. Then you can resolve Npm dependencies at your own time with the node component function ```Resolve Npm Dependencies``` (pass the script params; it runs `npm install` in the nearest `package.json` folder of that script and reports on ```OnNpmDependenciesResolved```).
 
 ![resolve npm manually](https://i.imgur.com/3slggp8.png)
 
@@ -196,7 +196,11 @@ Works, just add another component and all action for a script will be filtered t
 
 #### Using git instead of releases
 
-This is supported, just download https://github.com/getnamo/NodeJs-Unreal/releases/download/0.5.0/nodejs-v0.5.0git-thirdparty-dependencies-only.7z in https://github.com/getnamo/NodeJs-Unreal/releases/tag/0.5.0 release and extract it into your project root (where the plugins folder is). This will add dependencies that are missing if you pulled a fresh clone from git.
+Supported, with a few extra steps since the git repo doesn't carry binaries:
+
+1. Clone into `{Project Root}/Plugins/NodeJs-Unreal` (the folder name matters, the default `Process Path` points at `Plugins/NodeJs-Unreal/Source/ThirdParty/node/`).
+2. Clone the [CLISystem](https://github.com/getnamo/CLISystem-Unreal) dependency into `{Project Root}/Plugins/CLISystem-Unreal`.
+3. Download the [Windows x64 node.js zip](https://nodejs.org/en/download) (the release bundles v24 LTS) and extract its contents into `Plugins/NodeJs-Unreal/Source/ThirdParty/node/` so that `node.exe` sits directly in that folder.
 
 #### Limitations
 

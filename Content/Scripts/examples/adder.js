@@ -1,5 +1,5 @@
 // NodeJs-Unreal "basic adder" example.
-// Bind OnScriptBegin on the component, then EmitEvent("myevent", "{\"x\":3,\"y\":4}").
+// Bind OnScriptBegin on the component, then EmitEvent("myevent", "{\"a\":3,\"b\":4}").
 // The 'result' event comes back on the component's OnEvent.
 
 const ipc = require('ipc-event-emitter').default(process);
