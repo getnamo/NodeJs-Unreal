@@ -71,29 +71,34 @@ function waitFor(predicate, timeoutMs, label) {
 	});
 }
 
-let rxBuf = Buffer.alloc(0);
 function matchMagic(buf, i) { return i + 4 <= buf.length && buf[i] === MAGIC[0] && buf[i + 1] === MAGIC[1] && buf[i + 2] === MAGIC[2] && buf[i + 3] === MAGIC[3]; }
 function findMagic(buf, start) { for (let i = start; i + 4 <= buf.length; i++) if (matchMagic(buf, i)) return i; return -1; }
 
-child.stdout.on('data', (chunk) => {
-	rxBuf = Buffer.concat([rxBuf, chunk]);
-	let cursor = 0;
-	while (true) {
-		if (rxBuf.length - cursor < 9) break;
-		if (!matchMagic(rxBuf, cursor)) { const f = findMagic(rxBuf, cursor + 1); if (f === -1) { cursor = Math.max(cursor, rxBuf.length - 3); break; } cursor = f; continue; }
-		let p = cursor + 4;
-		const type = rxBuf[p]; p += 1;
-		const hl = rxBuf.readUInt32LE(p); p += 4;
-		if (rxBuf.length < p + hl + 4) break;
-		const header = rxBuf.toString('utf8', p, p + hl); p += hl;
-		const bl = rxBuf.readUInt32LE(p); p += 4;
-		if (rxBuf.length < p + bl) break;
-		const binary = Buffer.from(rxBuf.subarray(p, p + bl)); p += bl;
-		dispatch(type, header, binary);
-		cursor = p;
-	}
-	if (cursor > 0) rxBuf = Buffer.from(rxBuf.subarray(cursor));
-});
+// Returns a stdout 'data' handler that decodes frames and calls onFrame(type, header, binary).
+function frameReader(onFrame) {
+	let rxBuf = Buffer.alloc(0);
+	return (chunk) => {
+		rxBuf = Buffer.concat([rxBuf, chunk]);
+		let cursor = 0;
+		while (true) {
+			if (rxBuf.length - cursor < 9) break;
+			if (!matchMagic(rxBuf, cursor)) { const f = findMagic(rxBuf, cursor + 1); if (f === -1) { cursor = Math.max(cursor, rxBuf.length - 3); break; } cursor = f; continue; }
+			let p = cursor + 4;
+			const type = rxBuf[p]; p += 1;
+			const hl = rxBuf.readUInt32LE(p); p += 4;
+			if (rxBuf.length < p + hl + 4) break;
+			const header = rxBuf.toString('utf8', p, p + hl); p += hl;
+			const bl = rxBuf.readUInt32LE(p); p += 4;
+			if (rxBuf.length < p + bl) break;
+			const binary = Buffer.from(rxBuf.subarray(p, p + bl)); p += bl;
+			onFrame(type, header, binary);
+			cursor = p;
+		}
+		if (cursor > 0) rxBuf = Buffer.from(rxBuf.subarray(cursor));
+	};
+}
+
+child.stdout.on('data', frameReader(dispatch));
 
 function dispatch(type, header, binary) {
 	const tag = { [T_LOG]: 'LOG', [T_PLOG]: 'PLOG', [T_ACTION]: 'ACTION', [T_EVENT]: 'EVENT', [T_ERROR]: 'ERROR', [T_NPM]: 'NPM', [T_ACK]: 'ACK' }[type] || ('0x' + type.toString(16));
@@ -406,6 +411,27 @@ async function run() {
 		const alive = pids.filter(pid => { try { process.kill(pid, 0); return true; } catch (e) { return false; } });
 		check(alive.length === 0, `exit: no subprocess script outlived the bridge (alive: ${alive.length})`);
 		for (const pid of alive) { try { process.kill(pid); } catch (e) { /* */ } }
+	}
+
+	// ---- 15) bridge killed outright (crash / SIGKILL): subprocess scripts still exit ----
+	// Uses a second bridge; the first one has exited. Linux doesn't reap orphans for us.
+	for (const signal of ['SIGKILL', 'SIGTERM']) {
+		const bridge = spawn(process.execPath, [PROCESS_JS], { cwd: SCRIPTS_DIR, stdio: ['pipe', 'pipe', 'inherit'] });
+		let tickPid = null;
+		bridge.stdout.on('data', frameReader((type, header) => {
+			if (type !== T_EVENT) return;
+			const e = JSON.parse(header);
+			if (e.name === 'tick' && e.args[0]) tickPid = e.args[0].pid;
+		}));
+		bridge.stdin.write(controlFrame(JSON.stringify({ cmd: 'scriptsPath', path: SCRIPTS_DIR + path.sep })));
+		bridge.stdin.write(controlFrame(JSON.stringify({ cmd: 'launch', owner: 'k', script: 'ticker.js', path: T, mode: 'subprocess' })));
+		for (let i = 0; i < 100 && !tickPid; i++) await sleep(50);
+		bridge.kill(signal);
+		await sleep(1500); // childGuard grace is 500ms
+		let alive = !!tickPid;
+		if (tickPid) { try { process.kill(tickPid, 0); } catch (e) { alive = false; } }
+		check(!!tickPid && !alive, `bridge ${signal}: subprocess script exited on its own`);
+		if (alive) { try { process.kill(tickPid); } catch (e) { /* */ } }
 	}
 }
 

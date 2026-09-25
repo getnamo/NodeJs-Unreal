@@ -1,5 +1,5 @@
 /**
- *  NodeJs-Unreal v2.1.0 - process.js
+ *  NodeJs-Unreal v2.2.0 - process.js
  *
  *  Entry-point wrapper launched by the Unreal NodeComponent (via CLISystem) over
  *  stdin/stdout. All communication is a self-delimiting binary frame protocol so
@@ -43,6 +43,8 @@ const BUNDLED_MODULES = path.join(__dirname, 'node_modules');
 }
 
 const WORKER_BOOTSTRAP = path.join(__dirname, 'workerBootstrap.js');
+const CHILD_GUARD = path.join(__dirname, 'childGuard.js');
+const SIGNAL_GRACE_MS = 200;
 const EXIT_EVENT = 'shouldExit';
 const SUBPROCESS_GRACE_MS = 200;
 const WORKER_GRACE_MS = 100;
@@ -339,8 +341,18 @@ function missingModuleFrom(message) {
 }
 
 // Run the bundled npm's `install` in pkgDir, report via an NPM frame, then call onDone(installed).
+// Windows zips keep npm next to node.exe; Linux/macOS tarballs put it in ../lib beside bin/node.
+function findNpmCli() {
+	const nodeDir = path.dirname(process.execPath);
+	const candidates = [
+		path.join(nodeDir, 'node_modules', 'npm', 'bin', 'npm-cli.js'),
+		path.join(nodeDir, '..', 'lib', 'node_modules', 'npm', 'bin', 'npm-cli.js'),
+	];
+	return candidates.find(p => fs.existsSync(p)) || candidates[0];
+}
+
 function runNpmInstall(owner, script, pkgDir, onDone) {
-	const npmCli = path.join(path.dirname(process.execPath), 'node_modules', 'npm', 'bin', 'npm-cli.js');
+	const npmCli = findNpmCli();
 	plog(`npm install in ${pkgDir} ...`);
 
 	const npm = childProcess.execFile(
@@ -570,7 +582,12 @@ function launchSubprocess(entry) {
 	try {
 		// silent: pipe stdout/stderr so we can re-frame them.
 		// advanced serialization: preserve Buffers across the IPC channel.
-		child = fork(entry.fullPath, entry.args, { silent: true, serialization: 'advanced' });
+		// childGuard: exit shortly after losing process.js, so scripts can't outlive Unreal.
+		child = fork(entry.fullPath, entry.args, {
+			silent: true,
+			serialization: 'advanced',
+			execArgv: process.execArgv.concat(['--require', CHILD_GUARD]),
+		});
 	} catch (error) {
 		sendError(entry.owner, entry.scriptName, error.message, error.stack);
 		entry.running = false;
@@ -957,6 +974,14 @@ process.stdin.on('data', (chunk) => {
 
 // Unreal closed our input pipe (component stopped): clean up and leave.
 process.stdin.on('end', () => shutdown(100));
+
+// Unreal's pipe reader is gone: writes would fail with EPIPE, just shut down.
+process.stdout.on('error', () => shutdown(0));
+
+// On Linux, Unreal's TerminateProc sends SIGTERM. Stop scripts (and their children) first.
+for (const signal of ['SIGTERM', 'SIGINT', 'SIGHUP']) {
+	try { process.on(signal, () => shutdown(SIGNAL_GRACE_MS)); } catch (e) { /* not supported on this platform */ }
+}
 
 // Keep the bridge alive even if a script throws asynchronously; surface it.
 process.on('uncaughtException', (err) => {

@@ -24,7 +24,7 @@
 
 namespace NodeJsTests
 {
-	constexpr EAutomationTestFlags Flags = EAutomationTestFlags::EditorContext | EAutomationTestFlags::ProductFilter;
+	constexpr EAutomationTestFlags Flags = EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::ProductFilter;
 	constexpr double Timeout = 15.0;
 
 	//A standalone game instance + world, so both own-process and shared-process components work.

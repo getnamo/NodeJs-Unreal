@@ -76,5 +76,6 @@ Plugins/*/Intermediate/*
 # Cache files for the editor to use
 DerivedDataCache/*
 Source/ThirdParty/node
+Source/ThirdParty/node-linux
 Content/Scripts/node_modules/*
 !Content/Scripts/node_modules/ipc-event-emitter/

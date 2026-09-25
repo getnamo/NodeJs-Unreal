@@ -15,19 +15,29 @@ public class NodeJs : ModuleRules
 		get { return Path.GetFullPath(Path.Combine(ModuleDirectory, "../ThirdParty/node")); }
 	}
 
+	private string ThirdPartyLinuxPath
+	{
+		get { return Path.GetFullPath(Path.Combine(ModuleDirectory, "../ThirdParty/node-linux")); }
+	}
+
 	public void AddScriptsAsDependencies(ReadOnlyTargetRules Target)
 	{
-		if (Target.Platform == UnrealTargetPlatform.Win64)
+		if (Target.Platform == UnrealTargetPlatform.Win64 || Target.Platform == UnrealTargetPlatform.Linux)
 		{
 			RuntimeDependencies.Add(Path.Combine(ScriptsPath, "..."));
 		}
 	}
 
+	//Only the node build for the target platform is staged.
 	public void AddThirdPartyAsDependencies(ReadOnlyTargetRules Target)
 	{
 		if (Target.Platform == UnrealTargetPlatform.Win64)
 		{
 			RuntimeDependencies.Add(Path.Combine(ThirdPartyPath, "..."));
+		}
+		else if (Target.Platform == UnrealTargetPlatform.Linux)
+		{
+			RuntimeDependencies.Add(Path.Combine(ThirdPartyLinuxPath, "..."));
 		}
 	}
 

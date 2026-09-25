@@ -252,8 +252,8 @@ By default every component starts its own node process. Set `Node Js Process Par
 
 #### Tests
 
-- `Content/Scripts/test/harness.js` drives `process.js` without the engine: `Source/ThirdParty/node/node.exe Content/Scripts/test/harness.js`
-- In-engine automation tests live under `NodeJs.*`: `UnrealEditor-Cmd.exe <project> -ExecCmds="Automation RunTests NodeJs; Quit" -unattended -nullrhi -nopause -log`
+- `Content/Scripts/test/harness.js` drives `process.js` without the engine: `Source/ThirdParty/node/node.exe Content/Scripts/test/harness.js` (Linux: `Source/ThirdParty/node-linux/bin/node`)
+- In-engine automation tests live under `NodeJs.*`: `UnrealEditor-Cmd.exe <project> -ExecCmds="Automation RunTests NodeJs; Quit" -unattended -nullrhi -nopause -log`. They also run in packaged Development builds, e.g. `./MyGame.sh -ExecCmds="Automation RunTests NodeJs; Quit" -nullrhi -unattended` on Linux
 
 
 #### Using git instead of releases
@@ -262,11 +262,17 @@ Supported, with a few extra steps since the git repo doesn't carry binaries:
 
 1. Clone into `{Project Root}/Plugins/NodeJs-Unreal` (since v2.1 other folder names work too; node is found inside the plugin wherever it's installed).
 2. Clone the [CLISystem](https://github.com/getnamo/CLISystem-Unreal) dependency into `{Project Root}/Plugins/CLISystem-Unreal`.
-3. Download the [Windows x64 node.js zip](https://nodejs.org/en/download) (the release bundles v24 LTS) and extract its contents into `Plugins/NodeJs-Unreal/Source/ThirdParty/node/` so that `node.exe` sits directly in that folder.
+3. Download [node.js](https://nodejs.org/en/download) (the release bundles v24 LTS):
+   - Windows: extract the win-x64 zip's contents into `Plugins/NodeJs-Unreal/Source/ThirdParty/node/`, so that `node.exe` sits directly in that folder
+   - Linux: extract the linux-x64 tarball's `bin/` and `lib/` into `Plugins/NodeJs-Unreal/Source/ThirdParty/node-linux/`, so that the binary is at `node-linux/bin/node`
+
+#### Platforms
+
+Win64 and Linux (x86_64). Mac and Linux arm64 aren't supported yet.
+
+On Linux, node is made executable automatically if the execute bit got lost (e.g. archives or packages made on Windows). Scripts run as a Subprocess exit shortly after their parent node process goes away, so they can't outlive the game even if it crashes.
 
 #### Limitations
-
-Current builds are Win64 only.
 
 Since v2.0.0 communication to the embedded node.exe takes place over the process stdin/stdout pipe using a self-delimiting binary frame protocol (built on the [CLISystem](https://github.com/getnamo/CLISystem-Unreal) plugin) — there is no longer any socket.io/TCP server. Logs, events and raw binary interweave on the one stream. Comms and scripts run on background threads with callbacks marshalled to the game thread, so nothing blocks while scripts run, but sub-tick latency is not guaranteed; a message roundtrip will usually take at least one game tick.
 

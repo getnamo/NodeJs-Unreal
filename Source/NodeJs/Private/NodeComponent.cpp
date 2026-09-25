@@ -11,8 +11,29 @@
 #include "Misc/Paths.h"
 #include "Json.h"
 
+#if PLATFORM_LINUX
+#include <sys/stat.h>
+#endif
+
 namespace
 {
+#if PLATFORM_LINUX
+	//Archives made on Windows (and packaging from a Windows host) drop the execute bit.
+	void EnsureExecutable(const FString& Path)
+	{
+		const auto Utf8Path = StringCast<UTF8CHAR>(*Path);
+		const char* CPath = (const char*)Utf8Path.Get();
+		struct stat Info;
+		if (stat(CPath, &Info) == 0 && (Info.st_mode & S_IXUSR) == 0)
+		{
+			if (chmod(CPath, Info.st_mode | S_IXUSR | S_IXGRP | S_IXOTH) != 0)
+			{
+				UE_LOG(LogNodeJs, Warning, TEXT("Could not make %s executable (errno %d)."), *Path, errno);
+			}
+		}
+	}
+#endif
+
 	FString ToCondensedJson(const TArray<TSharedPtr<FJsonValue>>& Array)
 	{
 		FString Out;
@@ -149,7 +170,7 @@ void UNodeComponent::RetireProcessHandler(TSharedPtr<FSubProcessHandler> Handler
 {
 	if (Handler.IsValid())
 	{
-		FTSTicker::GetCoreTicker().AddTicker(FTickerDelegate::CreateLambda([Handler](float) { return false; }), 1.0f);
+		FTSTicker::GetCoreTicker().AddTicker(FTickerDelegate::CreateLambda([Handler](float) { return false; }), 5.0f);
 	}
 }
 
@@ -161,22 +182,25 @@ TArray<uint8> UNodeComponent::MakeExitFrame(float GraceSeconds)
 
 void UNodeComponent::ApplyProcessParams(const FNodeJsProcessParams& NodeParams, FProcessParams& OutParams)
 {
-	FString ProcessName = NodeParams.ProcessName;
 #if PLATFORM_WINDOWS
-	ProcessName += TEXT(".exe");
+	const FString ProcessName = NodeParams.ProcessName + TEXT(".exe");
+	const FString& ProcessPath = NodeParams.ProcessPath;
+	const TCHAR* PluginNodeDir = TEXT("Source/ThirdParty/node/");
+#else
+	const FString& ProcessName = NodeParams.ProcessName;
+	const FString& ProcessPath = NodeParams.ProcessPathLinux;
+	const TCHAR* PluginNodeDir = TEXT("Source/ThirdParty/node-linux/bin/");
 #endif
+	const TSharedPtr<IPlugin> Plugin = IPluginManager::Get().FindPlugin(TEXT("NodeJs"));
 
-	FString WorkingDirectory = FPaths::ConvertRelativePathToFull(FPaths::ProjectDir() + NodeParams.ProcessPath);
-	if (!FPaths::FileExists(FPaths::Combine(WorkingDirectory, ProcessName)))
+	FString WorkingDirectory = FPaths::ConvertRelativePathToFull(FPaths::ProjectDir() + ProcessPath);
+	if (!FPaths::FileExists(FPaths::Combine(WorkingDirectory, ProcessName)) && Plugin.IsValid())
 	{
 		//Plugin installed elsewhere (renamed folder, engine plugins): use its own bundled node.
-		if (TSharedPtr<IPlugin> Plugin = IPluginManager::Get().FindPlugin(TEXT("NodeJs")))
+		const FString BundledDir = FPaths::ConvertRelativePathToFull(FPaths::Combine(Plugin->GetBaseDir(), PluginNodeDir));
+		if (FPaths::FileExists(FPaths::Combine(BundledDir, ProcessName)))
 		{
-			const FString PluginNodeDir = FPaths::ConvertRelativePathToFull(FPaths::Combine(Plugin->GetBaseDir(), TEXT("Source/ThirdParty/node/")));
-			if (FPaths::FileExists(FPaths::Combine(PluginNodeDir, ProcessName)))
-			{
-				WorkingDirectory = PluginNodeDir;
-			}
+			WorkingDirectory = BundledDir;
 		}
 	}
 	if (!WorkingDirectory.EndsWith(TEXT("/")))
@@ -184,8 +208,14 @@ void UNodeComponent::ApplyProcessParams(const FNodeJsProcessParams& NodeParams, 
 		WorkingDirectory += TEXT("/");
 	}
 
+	const FString NodeExecutable = WorkingDirectory + ProcessName;
+#if PLATFORM_LINUX
+	EnsureExecutable(NodeExecutable);
+#endif
+
 	OutParams.OptionalWorkingDirectory = WorkingDirectory;
-	OutParams.Url = WorkingDirectory + ProcessName;
+	OutParams.Url = NodeExecutable;
+	OutParams.IdleReadSleepSeconds = FMath::Max(0.f, NodeParams.PipeIdleSleepSeconds);
 
 	//The bridge always runs in bytes mode: the framed protocol interweaves
 	//logs, events and binary on the single stdio stream.
@@ -196,8 +226,13 @@ void UNodeComponent::ApplyProcessParams(const FNodeJsProcessParams& NodeParams, 
 	OutParams.bLaunchReallyHidden = true;
 	OutParams.bOutputToGameThread = false;
 
-	//main process script to execute
-	OutParams.Params = NodeParams.ProcessScriptPath + NodeParams.ProcessScriptName;
+	//main process script to execute. Absolute and quoted: Linux ignores the working directory.
+	FString ProcessScript = FPaths::ConvertRelativePathToFull(WorkingDirectory + NodeParams.ProcessScriptPath + NodeParams.ProcessScriptName);
+	if (!FPaths::FileExists(ProcessScript) && Plugin.IsValid())
+	{
+		ProcessScript = FPaths::ConvertRelativePathToFull(FPaths::Combine(Plugin->GetBaseDir(), TEXT("Content/Scripts"), NodeParams.ProcessScriptName));
+	}
+	OutParams.Params = FString::Printf(TEXT("\"%s\""), *ProcessScript);
 }
 
 //~ Script control ---------------------------------------------------------
@@ -920,6 +955,9 @@ void UNodeComponent::InstallProcessHandler()
 
 void UNodeComponent::UninitializeComponent()
 {
+	//Super drops the handler while its pipe reader thread may still be polling it
+	//(a use-after-free that crashes on Linux); keep it alive until that thread is done.
+	RetireProcessHandler(ProcessHandler);
 	Super::UninitializeComponent();
 }
 

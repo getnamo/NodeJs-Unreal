@@ -90,6 +90,10 @@ struct NODEJS_API FNodeJsProcessParams
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "NodeJs Params")
 	FString ProcessPath = TEXT("Plugins/NodeJs-Unreal/Source/ThirdParty/node/");
 
+	//As ProcessPath, used on Linux (node's own layout: the binary lives in bin/).
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "NodeJs Params")
+	FString ProcessPathLinux = TEXT("Plugins/NodeJs-Unreal/Source/ThirdParty/node-linux/bin/");
+
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "NodeJs Params")
 	FString ProcessName = TEXT("node");
 
@@ -97,7 +101,7 @@ struct NODEJS_API FNodeJsProcessParams
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "NodeJs Params")
 	FString ProcessScriptName = TEXT("process.js");
 
-	//This is relative to the process path
+	//This is relative to the process path. If process.js isn't found there, the plugin's own Content/Scripts is used.
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "NodeJs Params")
 	FString ProcessScriptPath = TEXT("../../../Content/Scripts/");
 
@@ -140,6 +144,11 @@ struct NODEJS_API FNodeJsProcessParams
 	//On EndPlay, how long to wait for scripts to run their 'shouldExit' cleanup before node is terminated.
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "NodeJs Params")
 	float ShutdownGraceSeconds = 0.3f;
+
+	//How long the pipe reader sleeps when node has no new output (CLISystem IdleReadSleepSeconds).
+	//0 polls continuously (lowest latency, but a busy CPU core per node process).
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "NodeJs Params")
+	float PipeIdleSleepSeconds = 0.001f;
 };
 
 USTRUCT(BlueprintType)
