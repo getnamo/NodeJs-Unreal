@@ -1,4 +1,4 @@
-// Copyright getnamo. NodeJs-Unreal v2.0.0
+// Copyright getnamo. NodeJs-Unreal v2.1.0
 //
 // Self-delimiting, length-prefixed frame protocol shared between the C++ side
 // (this codec) and the node-side process.js bridge. The bridge runs in bytes
@@ -20,18 +20,22 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "HAL/ThreadSafeBool.h"
+
+class FJsonObject;
 
 namespace ENodeFrameType
 {
 	enum Type : uint8
 	{
 		Log        = 0x01, // node->UE  : script console.log text
-		Action     = 0x02, // node->UE  : "begin|end|reload <scriptPath>"
-		Event      = 0x03, // both ways : JSON {script,name,args} + binary table
-		Error      = 0x04, // node->UE  : JSON {script,message,stack}
-		Control    = 0x05, // UE->node  : command line text
+		Action     = 0x02, // node->UE  : JSON {owner,script,verb,path}, verb: begin|end|reload|changed|exiting
+		Event      = 0x03, // both ways : JSON {owner,script,name,args[,ack]} + binary table
+		Error      = 0x04, // node->UE  : JSON {owner,script,message,stack}
+		Control    = 0x05, // UE->node  : JSON {cmd,owner,script,...} (v2.0 space-separated lines still accepted)
 		ProcessLog = 0x06, // node->UE  : process-level (wrapper) log text
-		Npm        = 0x07, // node->UE  : JSON {installed:bool, error:string}
+		Npm        = 0x07, // node->UE  : JSON {owner,script,installed,error}
+		Ack        = 0x08, // node->UE  : JSON {owner,script,ack,args} + binary table (callback reply)
 	};
 }
 
@@ -59,10 +63,23 @@ public:
 	/** Called once per fully-decoded frame (on the calling thread of Feed). */
 	TFunction<void(uint8 Type, const FString& Header, const TArray<uint8>& Binary)> OnFrame;
 
+	/** Parses the JSON header of node->UE frames. Null for plain-text frames (ProcessLog). */
+	static TSharedPtr<FJsonObject> ParseJsonHeader(uint8 Type, const FString& Header);
+
+	/** True for the 'exiting' action process.js sends once it has shut its scripts down. */
+	static bool IsExitAck(uint8 Type, const TSharedPtr<FJsonObject>& Header);
+
 private:
 	TArray<uint8> Accum;
 
 	void TryParse();
 	bool MatchMagicAt(int32 Index) const;
 	int32 FindMagicFrom(int32 Start) const;
+};
+
+/** Decoder + exit ack flag, shared between the game thread owner and the pipe reader thread. */
+struct NODEJS_API FNodeBridgeState
+{
+	FNodeFrameCodec Decoder;
+	FThreadSafeBool bExitAcked = false;
 };

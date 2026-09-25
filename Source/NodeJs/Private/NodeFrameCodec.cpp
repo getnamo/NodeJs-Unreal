@@ -1,6 +1,9 @@
-// Copyright getnamo. NodeJs-Unreal v2.0.0
+// Copyright getnamo. NodeJs-Unreal v2.1.0
 
 #include "NodeFrameCodec.h"
+#include "Dom/JsonObject.h"
+#include "Serialization/JsonReader.h"
+#include "Serialization/JsonSerializer.h"
 
 const uint8 FNodeFrameCodec::Magic[4] = { 0x4E, 0x55, 0x45, 0x01 };
 
@@ -98,6 +101,28 @@ bool FNodeFrameCodec::ParseBinaryTable(const TArray<uint8>& Table, TArray<TArray
 		Cursor += Len;
 	}
 	return true;
+}
+
+TSharedPtr<FJsonObject> FNodeFrameCodec::ParseJsonHeader(uint8 Type, const FString& Header)
+{
+	if (Type == ENodeFrameType::ProcessLog || !Header.StartsWith(TEXT("{")))
+	{
+		return nullptr;
+	}
+	TSharedPtr<FJsonObject> Obj;
+	TSharedRef<TJsonReader<>> Reader = TJsonReaderFactory<>::Create(Header);
+	if (!FJsonSerializer::Deserialize(Reader, Obj))
+	{
+		return nullptr;
+	}
+	return Obj;
+}
+
+bool FNodeFrameCodec::IsExitAck(uint8 Type, const TSharedPtr<FJsonObject>& Header)
+{
+	FString Verb;
+	return Type == ENodeFrameType::Action && Header.IsValid()
+		&& Header->TryGetStringField(TEXT("verb"), Verb) && Verb == TEXT("exiting");
 }
 
 void FNodeFrameCodec::Feed(const TArray<uint8>& Chunk)

@@ -85,7 +85,9 @@ In your component properties set the name of the script you wish to run e.g. ```
 
 ### Passing data to scripts
 
-Since v2.0.0 data is passed to scripts via events rather than command-line arguments: bind ```OnScriptBegin``` and call ```Emit Event``` (see the adder below). This keeps a live two-way channel open instead of one-shot launch args.
+Data is mainly passed to scripts via events: bind ```OnScriptBegin``` and call ```Emit Event``` (see the adder below). This keeps a live two-way channel open.
+
+For one-shot launch arguments, fill `Script Params -> Args` (since v2.1). Your script sees them in `process.argv` (after the script path) and as `ipc.args`.
 
 Now let's look at a basic script
 
@@ -159,7 +161,29 @@ That's the basics! There are some other events and functions for e.g. starting/s
 
 To interweave raw bytes, use ```Emit Event With Binary``` from Unreal (the buffer arrives in your script as a trailing Node ```Buffer``` argument), or from your script emit a ```Buffer``` directly: ```ipc.emit('frame', { meta: 1 }, myBuffer)```. On the Unreal side the bytes arrive on ```OnEvent```'s ```Binary``` parameter. Binary travels natively (no base64) so it's suitable for image/audio streaming. See ```Content/Scripts/examples/perfStream.js``` for a throughput example and ```cubeSine.js``` for an async actor-driving demo.
 
-> The bundled ```ipc-event-emitter``` (in ```Content/Scripts/node_modules```) is wire-compatible with the npm package, so the ```require('ipc-event-emitter').default(process)``` one-liner works out of the box with no ```npm install``` — for both inline and subprocess scripts.
+To send several buffers at once use ```Emit Event With Buffers```. They arrive as trailing `Buffer` args, or exactly where you put them if your JSON contains `{"_bin":i}` placeholders, e.g. `{"image":{"_bin":0},"mask":{"_bin":1}}`. Scripts can emit any number of Buffers anywhere in their args. Bind ```OnEventWithBuffers``` to receive all of them, with the script name, as a `Node Event Data` struct.
+
+> The bundled ```ipc-event-emitter``` (in ```Content/Scripts/node_modules```) is wire-compatible with the npm package, so the ```require('ipc-event-emitter').default(process)``` one-liner works out of the box with no ```npm install```, in every launch mode and for scripts in your project folder too.
+
+#### Replies (callbacks)
+
+```Emit Event With Callback``` gives the script's handler a trailing reply function. Whatever the script passes to it (JSON and Buffers) comes back on your `Callback` event:
+
+```js
+ipc.on('ask', (question, reply) => {
+	reply({ answer: 42 });
+});
+```
+
+In C++, `EmitEventNative(Name, Args, Buffers, ScriptName, [](const FNodeEventData& Reply){ ... })` does the same with a lambda.
+
+#### Binding events to functions
+
+Instead of switching on `EventName` in `OnEvent`, you can route one event straight to a handler. Bound handlers fire in addition to `OnEvent`.
+
+- ```Bind Event``` (EventName, Callback): use a Blueprint custom event taking `Node Event Data`
+- ```Bind Event To Function``` (EventName, FunctionName, Target): calls a function by name. It must take `(String JsonArgs)`, `(String JsonArgs, Byte Array Binary)` or `(Node Event Data Event)`, and a mismatch is logged when you bind
+- ```Unbind Event``` removes them; C++ can use `BindEventNative(EventName, Lambda)`
 
 ## Packaging
 
@@ -168,6 +192,37 @@ Works since v0.5, just make sure to add the folder where your project Scripts ar
 ![](https://i.imgur.com/pURWRY7.png)
 
 ## Usage Notes
+
+#### Launch modes, stopping and reloading
+
+`Script Params -> Launch Mode` picks how a script runs:
+
+| Mode | How it runs | What Stop / reload does |
+|---|---|---|
+| **Inline** (default) | Loaded into the node process. Lowest latency | Fires `shouldExit`, calls your `module.exports.dispose()` if you have one, then clears the script's timers (`setTimeout`/`setInterval`/`setImmediate`) and listeners |
+| **Worker** | A worker thread inside the node process | Fires `shouldExit`, then terminates the thread. Everything stops, sockets included |
+| **Subprocess** | Its own forked node process | Fires `shouldExit`, then disconnects, then kills it |
+
+Inline scripts that open sockets or servers should close them in `shouldExit`, otherwise they outlive the stop:
+
+```js
+const server = require('http').createServer(handler).listen(8080);
+ipc.on('shouldExit', () => server.close());
+```
+
+Calling `Start Script` on a script that's already running restarts it. On EndPlay, scripts get `Shutdown Grace Seconds` (default 0.3) to run their `shouldExit` cleanup before node is terminated.
+
+The v2.0 `Inline Launch Script` flag (advanced) still works: unticked forces Subprocess, whatever `Launch Mode` says.
+
+Create the ipc emitter (`require('ipc-event-emitter').default(process)`) in your entry script, not at the top of a shared helper module. Helper modules are cached across inline scripts, so a module-level emitter would be bound to whichever script loaded that helper first.
+
+#### Live reload
+
+Set `bWatchFileForChanges` (or call ```Watch Script``` later). Saving the script fires `OnScriptChanged`, then with `bReloadOnChange` (default) it reloads: `OnScriptEnd`, `OnScriptReloaded`, `OnScriptBegin`. With `bReloadOnChange` off you only get `OnScriptChanged` and decide yourself. ```Unwatch Script``` stops watching.
+
+#### Script state
+
+`Is Script Running` (empty name = the default script) and `Get Running Scripts` track what's live. `Get Script Full Path` tells you which file a script resolves to, and `Package Dependencies` lists the `dependencies` in its nearest `package.json`.
 
 #### Where scripts are loaded from
 Your script (`Default Script Params -> Script`, relative to `Script Path Root`, default `Content/Scripts/`) is looked up in your **project's** `Content/Scripts` first, and if not found there it falls back to the **plugin's** own `Content/Scripts`. That's why the bundled `examples/*.js` run without copying them into your project.
@@ -191,14 +246,21 @@ You can disable this auto-resolving and auto-run on npm install via `Node Js Pro
 
 #### Multiple scripts
 
-Works, just add another component and all action for a script will be filtered to only communicate to the component that launched it.
+Works: one component can run several scripts (pass a `ScriptName` when emitting), and several components can run the same script. Everything for a script is only delivered to the component that launched it.
+
+By default every component starts its own node process. Set `Node Js Process Params -> Share Main Process` on components to run all of their scripts in one shared node process for the game instance instead (saves memory and startup time). Scripts stay isolated per component, and the process is stopped when the game instance shuts down.
+
+#### Tests
+
+- `Content/Scripts/test/harness.js` drives `process.js` without the engine: `Source/ThirdParty/node/node.exe Content/Scripts/test/harness.js`
+- In-engine automation tests live under `NodeJs.*`: `UnrealEditor-Cmd.exe <project> -ExecCmds="Automation RunTests NodeJs; Quit" -unattended -nullrhi -nopause -log`
 
 
 #### Using git instead of releases
 
 Supported, with a few extra steps since the git repo doesn't carry binaries:
 
-1. Clone into `{Project Root}/Plugins/NodeJs-Unreal` (the folder name matters, the default `Process Path` points at `Plugins/NodeJs-Unreal/Source/ThirdParty/node/`).
+1. Clone into `{Project Root}/Plugins/NodeJs-Unreal` (since v2.1 other folder names work too; node is found inside the plugin wherever it's installed).
 2. Clone the [CLISystem](https://github.com/getnamo/CLISystem-Unreal) dependency into `{Project Root}/Plugins/CLISystem-Unreal`.
 3. Download the [Windows x64 node.js zip](https://nodejs.org/en/download) (the release bundles v24 LTS) and extract its contents into `Plugins/NodeJs-Unreal/Source/ThirdParty/node/` so that `node.exe` sits directly in that folder.
 

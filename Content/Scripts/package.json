@@ -1,6 +1,6 @@
 {
 	"name": "nodejs-unreal-scripts",
-	"version": "2.0.0",
+	"version": "2.1.0",
 	"description": "NodeJs-Unreal process bridge. ipc-event-emitter is bundled locally (node_modules/ipc-event-emitter); add your own script dependencies here.",
 	"dependencies": {}
 }

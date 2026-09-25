@@ -53,6 +53,8 @@ public class NodeJs : ModuleRules
 			new string[]
 			{
 				"Core",
+				"CoreUObject",
+				"Engine",
 				"Projects",
 				"CLISystem",
 				"Json"
@@ -64,8 +66,6 @@ public class NodeJs : ModuleRules
 		PrivateDependencyModuleNames.AddRange(
 			new string[]
 			{
-				"CoreUObject",
-				"Engine",
 				// ... add private dependencies that you statically link with here ...	
 			}
 			);
