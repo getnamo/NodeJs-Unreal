@@ -145,8 +145,13 @@ struct NODEJS_API FNodeJsProcessParams
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "NodeJs Params")
 	float ShutdownGraceSeconds = 0.3f;
 
-	//How long the pipe reader sleeps when node has no new output (CLISystem IdleReadSleepSeconds).
-	//0 polls continuously (lowest latency, but a busy CPU core per node process).
+	//The pipe reader waits for node's output instead of polling (CLISystem bBlockingRead): low latency
+	//with no busy CPU core, and node's last output is read even after it exits. Win64 and Linux.
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "NodeJs Params")
+	bool bBlockingPipeRead = true;
+
+	//Only used with bBlockingPipeRead off: how long the polling pipe reader sleeps when node has no new
+	//output (CLISystem IdleReadSleepSeconds). 0 polls continuously (a busy CPU core per node process).
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "NodeJs Params")
 	float PipeIdleSleepSeconds = 0.001f;
 };

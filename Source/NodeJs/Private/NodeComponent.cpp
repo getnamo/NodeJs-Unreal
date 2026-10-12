@@ -168,10 +168,8 @@ namespace
 
 void UNodeComponent::RetireProcessHandler(TSharedPtr<FSubProcessHandler> Handler)
 {
-	if (Handler.IsValid())
-	{
-		FTSTicker::GetCoreTicker().AddTicker(FTickerDelegate::CreateLambda([Handler](float) { return false; }), 5.0f);
-	}
+	//Polling handlers don't join their reader thread; blocking ones do, and retiring them is harmless
+	FSubProcessHandler::Retire(MoveTemp(Handler), 5.0f);
 }
 
 TArray<uint8> UNodeComponent::MakeExitFrame(float GraceSeconds)
@@ -215,6 +213,7 @@ void UNodeComponent::ApplyProcessParams(const FNodeJsProcessParams& NodeParams, 
 
 	OutParams.OptionalWorkingDirectory = WorkingDirectory;
 	OutParams.Url = NodeExecutable;
+	OutParams.bBlockingRead = NodeParams.bBlockingPipeRead;
 	OutParams.IdleReadSleepSeconds = FMath::Max(0.f, NodeParams.PipeIdleSleepSeconds);
 
 	//The bridge always runs in bytes mode: the framed protocol interweaves

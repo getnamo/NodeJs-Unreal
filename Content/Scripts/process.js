@@ -1,5 +1,5 @@
 /**
- *  NodeJs-Unreal v2.2.0 - process.js
+ *  NodeJs-Unreal v2.3.0 - process.js
  *
  *  Entry-point wrapper launched by the Unreal NodeComponent (via CLISystem) over
  *  stdin/stdout. All communication is a self-delimiting binary frame protocol so

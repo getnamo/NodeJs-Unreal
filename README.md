@@ -261,7 +261,7 @@ By default every component starts its own node process. Set `Node Js Process Par
 Supported, with a few extra steps since the git repo doesn't carry binaries:
 
 1. Clone into `{Project Root}/Plugins/NodeJs-Unreal` (since v2.1 other folder names work too; node is found inside the plugin wherever it's installed).
-2. Clone the [CLISystem](https://github.com/getnamo/CLISystem-Unreal) dependency into `{Project Root}/Plugins/CLISystem-Unreal`.
+2. Clone the [CLISystem](https://github.com/getnamo/CLISystem-Unreal) dependency (v1.4.0 or newer) into `{Project Root}/Plugins/CLISystem-Unreal`.
 3. Download [node.js](https://nodejs.org/en/download) (the release bundles v24 LTS):
    - Windows: extract the win-x64 zip's contents into `Plugins/NodeJs-Unreal/Source/ThirdParty/node/`, so that `node.exe` sits directly in that folder
    - Linux: extract the linux-x64 tarball's `bin/` and `lib/` into `Plugins/NodeJs-Unreal/Source/ThirdParty/node-linux/`, so that the binary is at `node-linux/bin/node`
@@ -277,3 +277,5 @@ On Linux, node is made executable automatically if the execute bit got lost (e.g
 Since v2.0.0 communication to the embedded node.exe takes place over the process stdin/stdout pipe using a self-delimiting binary frame protocol (built on the [CLISystem](https://github.com/getnamo/CLISystem-Unreal) plugin) — there is no longer any socket.io/TCP server. Logs, events and raw binary interweave on the one stream. Comms and scripts run on background threads with callbacks marshalled to the game thread, so nothing blocks while scripts run, but sub-tick latency is not guaranteed; a message roundtrip will usually take at least one game tick.
 
 Binary is carried natively (no base64), so feeding large/image data is reasonable, though very high per-tick bandwidth should still be profiled for your use case.
+
+Since v2.3.0 the pipe reader waits for node's output instead of polling (`Node Js Process Params -> Blocking Pipe Read`, on by default, needs CLISystem 1.4.0). It gets polling's low latency without keeping a CPU core busy per node process. Measured in CLISystem's tests (Win64), a UE→child→UE round trip took about 67 µs, versus about 1.5 ms with v2.2's 1 ms idle sleep. It also reads node's last output after it exits. Turning it off brings back the polling reader with `Pipe Idle Sleep Seconds`.

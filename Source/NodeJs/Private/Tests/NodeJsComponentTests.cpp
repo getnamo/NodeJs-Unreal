@@ -406,6 +406,25 @@ bool FNodeJsLegacyLaunchModeTest::RunTest(const FString& Parameters)
 	return true;
 }
 
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FNodeJsBlockingPipeReadTest, "NodeJs.Params.BlockingPipeRead", NodeJsTests::Flags)
+bool FNodeJsBlockingPipeReadTest::RunTest(const FString& Parameters)
+{
+	FNodeJsProcessParams Defaults;
+	FProcessParams CLIParams;
+	UNodeComponent::ApplyProcessParams(Defaults, CLIParams);
+	TestTrue(TEXT("blocking pipe read is the default"), CLIParams.bBlockingRead);
+	TestTrue(TEXT("bridge runs in bytes mode"), CLIParams.bProcessInBytes);
+	TestFalse(TEXT("frames are decoded on the pipe thread"), CLIParams.bOutputToGameThread);
+
+	FNodeJsProcessParams Polling;
+	Polling.bBlockingPipeRead = false;
+	Polling.PipeIdleSleepSeconds = 0.002f;
+	UNodeComponent::ApplyProcessParams(Polling, CLIParams);
+	TestFalse(TEXT("blocking read can be turned off"), CLIParams.bBlockingRead);
+	TestEqual(TEXT("polling idle sleep still applies"), CLIParams.IdleReadSleepSeconds, 0.002f);
+	return true;
+}
+
 // StopProcess then StartProcess in the same frame restarts cleanly and relaunches the default script.
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FNodeJsRestartTest, "NodeJs.Component.StopStartSameFrame", NodeJsTests::Flags)
 bool FNodeJsRestartTest::RunTest(const FString& Parameters)
