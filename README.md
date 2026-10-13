@@ -6,8 +6,6 @@ Embed node.js as an unreal plugin. This enables you to embed cool things like: h
 
 Want to control unreal with javascript? consider using [UnrealJs](https://github.com/getnamo/Unrealjs) which is much more feature-rich. This plugin instead focuses on bringing node.js and npm api on background threads.
 
-Currently in an early working state, may have bugs!
-
 
 [![](https://i.imgur.com/kk6lERT.gif)](https://i.imgur.com/qhVMtde.mp4)
 
